@@ -23,5 +23,6 @@ android:
   - sys-img-armeabi-v7a-android-22
 script:
 - android list target
+- gradle wrapper
 # TODO Fix builds for testing ./gradlew build connectedCheck
 - ./gradlew build
