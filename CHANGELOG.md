@@ -1,6 +1,6 @@
 # Change Log - AWS SDK for Android
 
-## [Release 2.8.5](https://github.com/aws/aws-sdk-android/releases/tag/release_v2.8.5)
+## [Release 2.8.6](https://github.com/aws/aws-sdk-android/releases/tag/release_v2.8.5)
 
 ### New Features
 
