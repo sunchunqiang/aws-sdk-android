@@ -1,5 +1,112 @@
 # Change Log - AWS SDK for Android
 
+## [Release 2.10.0](https://github.com/aws/aws-sdk-android/releases/tag/release_v2.10.0)
+
+### Misc. Updates
+
+* Model updates for the following services
+    * Amazon Lex
+        * Added overrides to various `InteractionClient` and `LexServiceContinuation` methods, to allow passing request attributes
+        * **Breaking API Changes:** The following APIs have been changed:
+            * `PostContentRequest`, `PostContentResponse`
+                * Certain properties which used to have a type of `Map<String, String>` are now `String`. This requires your calling code to 
+                  JSON serialize and base64-encode the value. The `get`, `set` and `with` APIs of the following properties are affected:
+                  - `PostContentRequest.requestAttributes`
+                  - `PostContentRequest.sessionAttributes`
+                  - `PostContentRequest.slots`
+                  - `PostContentResponse.requestAttributes`
+                  - `PostContentResponse.sessionAttributes`
+                  - `PostContentResponse.slots`
+
+## [Release 2.9.2](https://github.com/aws/aws-sdk-android/releases/tag/release_v2.9.2)
+
+### Bug Fixes
+
+* **AWS IoT**
+  * `AWSIotMqttManager` passes publish exceptions via the callback. If callback is not provided it throws `AmazonClientException`.
+  * `AWSIotMqttManager` logs the reconnection errors and pass it to the user provided connection callback.
+
+* **Amazon Pinpoint**
+  * Fixed bug that could potentially cause rejected events to be dropped incorrectly because service response could not be unmarshalled. The response will now be processed correctly and events rejected by the service will be retried.
+
+* **Amazon S3**
+  * Fixed a bug where a disk operation to remove completed transfers from database was performed on the main thread. See [issue #603](https://github.com/aws-amplify/aws-sdk-android/issues/603)
+
+## [Release 2.9.1](https://github.com/aws/aws-sdk-android/releases/tag/release_v2.9.1)
+
+### New Features
+
+* **Amazon Cognito Auth**
+  * Added customization for CustomTabs through `setCustomTabsExtras()` in the builder. See [PR #608](https://github.com/aws-amplify/aws-sdk-android/pull/608)
+
+### Bug Fixes
+
+* **AWS IoT**
+  * Fixed bug that leaked threads during reconnect. See [PR #601](https://github.com/aws-amplify/aws-sdk-android/pull/601)
+  * Fixed reporting of failed message publishes during reconnect. See [PR #407](https://github.com/aws-amplify/aws-sdk-android/pull/407)
+  * Fix reconnection failure upon network disconnect. Any subsequent reconnect honors the value passed to the cleanSession flag. See [issue #584](https://github.com/aws-amplify/aws-sdk-android/issues/584) and [PR #612](https://github.com/aws-amplify/aws-sdk-android/pull/612)
+
+* **AWS Mobile Client**
+  * Fixed exception being thrown from `getCredentials()` and `refresh()` to adhere to `AmazonClientException` to allow other portions of SDK to catch properly. Previously a generic `RuntimeException` was being thrown; `AmazonClientException` is a subclass of `RuntimeException`. See [issue #588](https://github.com/aws-amplify/aws-sdk-android/issues/588)
+
+## [Release 2.9.0](https://github.com/aws/aws-sdk-android/releases/tag/release_v2.9.0)
+
+### New Features
+
+* **AWS Core Runtime**
+  * Added support for EU (Stockholm) region - `eu-north-1`.
+
+### Bug Fixes
+
+* **Amazon Pinpoint**
+    * `AppPackageName`, `AppTitle`, `AppVersionCode`, `SdkName` fields will now be accepted as part of the `Event` when submitting events from your app to Amazon Pinpoint. This fixes the issue where the event when exported by Amazon Kinesis Streams was missing these fields in the exported event.
+
+### Misc. Updates
+
+* Model updates for the following services
+    * Amazon Pinpoint
+        * **Breaking API Changes:** The following APIs have been changed:
+            * `PutEventsRequest`
+                * The type of `Endpoint` field is now changed back from `EndpointRequest` to `PublicEndpoint`.
+            * `PutEventsResponse`
+                * `PutEventsResponse` will have an `EventsResponse` field. The `Results` object in the `PutEventsResponse` is now nested under `EventsResponse`.
+
+* **Amazon Cognito Sync**
+  * This library is deprecated. Please use [AWS AppSync](https://aws-amplify.github.io/docs/android/api#graphql-realtime-and-offline) for synchronizing data across devices.
+
+* **Amazon Mobile Analytics**
+  * This library is deprecated. Please use [Amazon Pinpoint](https://aws-amplify.github.io/docs/android/analytics#using-amazon-pinpoint) for analytics.
+
+## [Release 2.8.5](https://github.com/aws/aws-sdk-android/releases/tag/release_v2.8.5)
+
+### New Features
+
+* **AWS Mobile Client**
+  * Support `showSignIn` without Cognito Identity Pool configured. See [issue #592](https://github.com/aws-amplify/aws-sdk-android/issues/592)
+
+* **Amazon Cognito Auth**
+  * Support identity provider identifier setting. See [PR #602](https://github.com/aws-amplify/aws-sdk-android/pull/602)
+
+### Bug Fixes
+
+* **AWS Mobile Client**
+  * Fix state change to `GUEST` mode which was not being triggered previously and would stay in `SIGNED_OUT` mode. This state is triggered by calling `getCredentials` or `getIdentityId` while signed-out and unauthenticated access is enabled in Cognito Identity Pools.
+
+* **AWS Auth SDK**
+  * Fix forced change password view's IDs to prevent crash. See [issue #586](https://github.com/aws-amplify/aws-sdk-android/issues/586)
+
+* **Amazon Cognito Identity Provider**
+  * Fix secret hash generation for empty value of client secret. Allows for operations such as sign-up to occur without client secret. See [issue #587](https://github.com/aws-amplify/aws-sdk-android/issues/587) [PR #593](https://github.com/aws-amplify/aws-sdk-android/pull/593)
+
+* **Amazon Lex**
+  * Fix race condition for microphone access when no speech is detected during interaction.
+
+### Misc. Updates
+
+* Model updates for the following services
+  * AWS IoT
+  * AWS Lambda
+
 ## [Release 2.8.4](https://github.com/aws/aws-sdk-android/releases/tag/release_v2.8.4)
 
 ### Bug Fixes

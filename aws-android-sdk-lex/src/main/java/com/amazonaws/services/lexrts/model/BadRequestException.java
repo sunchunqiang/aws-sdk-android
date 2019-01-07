@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2010-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import com.amazonaws.AmazonServiceException;
 /**
  * <p>
  * Request validation failed, there is no usable message in the context, or the
- * bot build failed.
+ * bot build failed, is still in progress, or contains unbuilt changes.
  * </p>
  */
 public class BadRequestException extends AmazonServiceException {

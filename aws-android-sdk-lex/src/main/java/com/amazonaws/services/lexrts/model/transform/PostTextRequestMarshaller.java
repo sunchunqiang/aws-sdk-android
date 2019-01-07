@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2010-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -79,6 +79,21 @@ public class PostTextRequestMarshaller implements
                     if (sessionAttributesValue != null) {
                         jsonWriter.name(sessionAttributesEntry.getKey());
                         jsonWriter.value(sessionAttributesValue);
+                    }
+                }
+                jsonWriter.endObject();
+            }
+            if (postTextRequest.getRequestAttributes() != null) {
+                java.util.Map<String, String> requestAttributes = postTextRequest
+                        .getRequestAttributes();
+                jsonWriter.name("requestAttributes");
+                jsonWriter.beginObject();
+                for (java.util.Map.Entry<String, String> requestAttributesEntry : requestAttributes
+                        .entrySet()) {
+                    String requestAttributesValue = requestAttributesEntry.getValue();
+                    if (requestAttributesValue != null) {
+                        jsonWriter.name(requestAttributesEntry.getKey());
+                        jsonWriter.value(requestAttributesValue);
                     }
                 }
                 jsonWriter.endObject();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2010-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -104,10 +104,26 @@ public class CreateJobRequestMarshaller implements
                 JobExecutionsRolloutConfigJsonMarshaller.getInstance().marshall(
                         jobExecutionsRolloutConfig, jsonWriter);
             }
+            if (createJobRequest.getAbortConfig() != null) {
+                AbortConfig abortConfig = createJobRequest.getAbortConfig();
+                jsonWriter.name("abortConfig");
+                AbortConfigJsonMarshaller.getInstance().marshall(abortConfig, jsonWriter);
+            }
             if (createJobRequest.getTimeoutConfig() != null) {
                 TimeoutConfig timeoutConfig = createJobRequest.getTimeoutConfig();
                 jsonWriter.name("timeoutConfig");
                 TimeoutConfigJsonMarshaller.getInstance().marshall(timeoutConfig, jsonWriter);
+            }
+            if (createJobRequest.getTags() != null) {
+                java.util.List<Tag> tags = createJobRequest.getTags();
+                jsonWriter.name("tags");
+                jsonWriter.beginArray();
+                for (Tag tagsItem : tags) {
+                    if (tagsItem != null) {
+                        TagJsonMarshaller.getInstance().marshall(tagsItem, jsonWriter);
+                    }
+                }
+                jsonWriter.endArray();
             }
 
             jsonWriter.endObject();

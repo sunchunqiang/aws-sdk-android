@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2010-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -19,10 +19,27 @@ import com.amazonaws.AmazonServiceException;
 
 /**
  * <p>
- * One of the downstream dependencies, such as AWS Lambda or Amazon Polly, threw
- * an exception. For example, if Amazon Lex does not have sufficient permissions
- * to call a Lambda function, it results in Lambda throwing an exception.
+ * One of the dependencies, such as AWS Lambda or Amazon Polly, threw an
+ * exception. For example,
  * </p>
+ * <ul>
+ * <li>
+ * <p>
+ * If Amazon Lex does not have sufficient permissions to call a Lambda function.
+ * </p>
+ * </li>
+ * <li>
+ * <p>
+ * If a Lambda function takes longer than 30 seconds to execute.
+ * </p>
+ * </li>
+ * <li>
+ * <p>
+ * If a fulfillment Lambda function returns a <code>Delegate</code> dialog
+ * action without removing any slot values.
+ * </p>
+ * </li>
+ * </ul>
  */
 public class DependencyFailedException extends AmazonServiceException {
     private static final long serialVersionUID = 1L;

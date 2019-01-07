@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2010-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -50,6 +50,11 @@ class JobJsonMarshaller {
             jsonWriter.name("forceCanceled");
             jsonWriter.value(forceCanceled);
         }
+        if (job.getReasonCode() != null) {
+            String reasonCode = job.getReasonCode();
+            jsonWriter.name("reasonCode");
+            jsonWriter.value(reasonCode);
+        }
         if (job.getComment() != null) {
             String comment = job.getComment();
             jsonWriter.name("comment");
@@ -82,6 +87,11 @@ class JobJsonMarshaller {
             jsonWriter.name("jobExecutionsRolloutConfig");
             JobExecutionsRolloutConfigJsonMarshaller.getInstance().marshall(
                     jobExecutionsRolloutConfig, jsonWriter);
+        }
+        if (job.getAbortConfig() != null) {
+            AbortConfig abortConfig = job.getAbortConfig();
+            jsonWriter.name("abortConfig");
+            AbortConfigJsonMarshaller.getInstance().marshall(abortConfig, jsonWriter);
         }
         if (job.getCreatedAt() != null) {
             java.util.Date createdAt = job.getCreatedAt();

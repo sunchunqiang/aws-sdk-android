@@ -27,23 +27,14 @@ public class PutEventsResultJsonUnmarshaller implements
         Unmarshaller<PutEventsResult, JsonUnmarshallerContext> {
 
     public PutEventsResult unmarshall(JsonUnmarshallerContext context) throws Exception {
-        PutEventsResult putEventsResult = new PutEventsResult();
-
         AwsJsonReader reader = context.getReader();
-        reader.beginObject();
-        while (reader.hasNext()) {
-            String name = reader.nextName();
-            if (name.equals("Results")) {
-                putEventsResult.setResults(new MapUnmarshaller<ItemResponse>(
-                        ItemResponseJsonUnmarshaller.getInstance()
-                        )
-                                .unmarshall(context));
-            } else {
-                reader.skipValue();
-            }
+        if (!reader.isContainer()) {
+            reader.skipValue();
+            return null;
         }
-        reader.endObject();
-
+        PutEventsResult putEventsResult = new PutEventsResult();
+        putEventsResult.setEventsResponse(EventsResponseJsonUnmarshaller.getInstance()
+                .unmarshall(context));
         return putEventsResult;
     }
 

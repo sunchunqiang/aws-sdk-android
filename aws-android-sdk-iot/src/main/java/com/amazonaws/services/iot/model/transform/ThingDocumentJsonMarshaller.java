@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2010-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -68,6 +68,11 @@ class ThingDocumentJsonMarshaller {
             String shadow = thingDocument.getShadow();
             jsonWriter.name("shadow");
             jsonWriter.value(shadow);
+        }
+        if (thingDocument.getConnectivity() != null) {
+            ThingConnectivity connectivity = thingDocument.getConnectivity();
+            jsonWriter.name("connectivity");
+            ThingConnectivityJsonMarshaller.getInstance().marshall(connectivity, jsonWriter);
         }
         jsonWriter.endObject();
     }

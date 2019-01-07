@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2018 Amazon Technologies, Inc.
+ * Copyright 2013-2019 Amazon Technologies, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,9 @@ public enum Regions {
 
     /** eu-central-1. */
     EU_CENTRAL_1("eu-central-1"),
+
+    /** eu-north-1. */
+    EU_NORTH_1("eu-north-1"),
 
     /** ap-south-1. */
     AP_SOUTH_1("ap-south-1"),

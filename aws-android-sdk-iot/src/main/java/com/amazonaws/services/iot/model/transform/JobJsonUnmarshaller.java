@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2010-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -50,6 +50,9 @@ class JobJsonUnmarshaller implements Unmarshaller<Job, JsonUnmarshallerContext> 
             } else if (name.equals("forceCanceled")) {
                 job.setForceCanceled(BooleanJsonUnmarshaller.getInstance()
                         .unmarshall(context));
+            } else if (name.equals("reasonCode")) {
+                job.setReasonCode(StringJsonUnmarshaller.getInstance()
+                        .unmarshall(context));
             } else if (name.equals("comment")) {
                 job.setComment(StringJsonUnmarshaller.getInstance()
                         .unmarshall(context));
@@ -66,6 +69,9 @@ class JobJsonUnmarshaller implements Unmarshaller<Job, JsonUnmarshallerContext> 
             } else if (name.equals("jobExecutionsRolloutConfig")) {
                 job.setJobExecutionsRolloutConfig(JobExecutionsRolloutConfigJsonUnmarshaller
                         .getInstance()
+                        .unmarshall(context));
+            } else if (name.equals("abortConfig")) {
+                job.setAbortConfig(AbortConfigJsonUnmarshaller.getInstance()
                         .unmarshall(context));
             } else if (name.equals("createdAt")) {
                 job.setCreatedAt(DateJsonUnmarshaller.getInstance()

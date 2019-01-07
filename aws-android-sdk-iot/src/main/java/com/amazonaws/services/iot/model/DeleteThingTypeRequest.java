@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2010-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import com.amazonaws.AmazonWebServiceRequest;
 
 /**
  * <p>
- * Deletes the specified thing type . You cannot delete a thing type if it has
+ * Deletes the specified thing type. You cannot delete a thing type if it has
  * things associated with it. To delete a thing type, first mark it as
  * deprecated by calling <a>DeprecateThingType</a>, then remove any associated
  * things by calling <a>UpdateThing</a> to change the thing type on any

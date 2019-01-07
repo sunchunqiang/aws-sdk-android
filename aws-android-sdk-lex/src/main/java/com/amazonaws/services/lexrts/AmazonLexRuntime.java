@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2010-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -98,8 +98,14 @@ public interface AmazonLexRuntime {
     /**
      * <p>
      * Sends user input (text or speech) to Amazon Lex. Clients use this API to
-     * send requests to Amazon Lex at runtime. Amazon Lex interprets the user
-     * input using the machine learning model that it built for the bot.
+     * send text and audio requests to Amazon Lex at runtime. Amazon Lex
+     * interprets the user input using the machine learning model that it built
+     * for the bot.
+     * </p>
+     * <p>
+     * The <code>PostContent</code> operation supports audio input at 8kHz and
+     * 16kHz. You can use 8kHz audio to achieve higher speech recognition
+     * accuracy in telephone audio applications.
      * </p>
      * <p>
      * In response, Amazon Lex returns the next message to convey to the user.
