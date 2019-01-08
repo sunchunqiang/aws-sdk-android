@@ -63,7 +63,14 @@ jobs:
       JVM_OPTS: -Xmx3200m     
     steps:
       - checkout   
-
+      - run: 
+          name: install json parser
+          command: |
+            sudo apt-get update
+            sudo apt-get -y install python3-pip
+      - run: 
+          name: install json parser
+          command: sudo pip3 install demjson
       - run:
           name: install aws cli
           command: |
@@ -78,18 +85,32 @@ jobs:
           name: set version
           command: |
             export release_tag=${CIRCLE_TAG}
-            export release_version=$(echo "$release_tag" | sed 's|.*v\([0-9\.]*\).*|\1|')
-            echo "version:$release_version"
+            echo "release_tag=$release_tag" >> $BASH_ENV
+            export release_version=$(echo "$release_tag" | sed 's|.*v\([0-9\.]*\).*|\1|') 
+            echo "release_version=$release_version" >> $BASH_ENV
       - run:
           name: generate documents
           command: |
             currentfolder=$(pwd)
-            python3 CircleciScripts/generatejavadoc.py CircleciScripts/ReleaseConfiguration.json /Users/sdechunq/Documents/github/android/bk/aws-sdk-android/  build/javadoc libs "$release_version"
+            python3 CircleciScripts/generatejavadoc.py CircleciScripts/ReleaseConfiguration.json "$currentfolder" build/javadoc libs "$release_version"
+      
+
       - run:
-          name: copy documents
+          name: check out gh-pages and preserve old document
           command: |
             git config --local user.name "${GITHUB_USER}"
             git checkout  gh-pages
+            git checkout master CircleciScripts/preserveolddocument.sh
+            set +e
+            bash CircleciScripts/preserveolddocument.sh
+      - run:
+          name: copy new document
+          command: |
+            cp -R build/javadoc/*   docs/reference/
+
+      - run:
+          name: check out gh-pages
+          command: |
             cp -R build/javadoc/*   docs/reference/
 
       - run:
@@ -97,7 +118,7 @@ jobs:
           command: |
             git add docs/reference
             git commit -m "AWS SDK for Android $release_version"
-            git push -q https://${GITHUB_TOKEN}@github.com/aws-amplify/aws-sdk-android.git  
+            git push -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git  
 
   tag_doc:
     docker:
@@ -109,9 +130,10 @@ jobs:
       - run:
           name: Add documentation tags to gh-pages
           command: |
+            git config --local user.name "${GITHUB_USER}"
             git checkout  gh-pages
             git tag -a ${CIRCLE_TAG}_api_docs  -m "Add documentation tags to version ${CIRCLE_TAG}"            
-            git push --tags -q https://${GITHUB_TOKEN}@github.com/sunchunqiang/aws-sdk-android.git     
+            git push --tags -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git     
 
   release_maven:
     macos: 
@@ -175,9 +197,34 @@ jobs:
             bash CircleciScripts/maven-release.sh
 
 
+  testcircleci:
+    docker:
+      - image: circleci/android:api-27-alpha
+    environment:
+      JVM_OPTS: -Xmx3200m     
+    steps:
+      - checkout   
+      - run:
+          name: copy documents
+          command: |
+            sudo pip install awscli
+            aws s3 cp s3://android-circleci-payload/gpghome/gpghome.zip gpghome.zip
+            echo "check profile"
+            aws configure --profile android_stage set region us-east-1
+            ~/.aws/credentials
+
+            echo -e "[android_stage]\naws_access_key_id=${AWS_ACCESS_KEY_ID_ANDROID}\naws_secret_access_key=${AWS_SECRET_ACCESS_KEY_ANDROID}\n" >> ~/.aws/credentials
+            aws configure --profile android_stage list
+            aws s3 ls s3://mylistname/test/ --profile android_stage
+
+
+          
 workflows:
   version: 2
-
+  build_test:
+    jobs: 
+      - testcircleci     
+ 
   
   release_sdk:
     jobs: 
@@ -196,10 +243,9 @@ workflows:
               ignore: /.*/            
             tags:
               only: /^release_v[0-9]+.[0-9]+.[0-9]+$/
-
-      - release_tag:
+      - release_tag:     
           requires:
-            - unittest
+            - unittest                    
           filters:
             branches:
               ignore: /.*/            
@@ -217,7 +263,7 @@ workflows:
 
       - release_javadoc:    
           requires:
-            - release_tag  
+            - release_maven  
           filters:
             branches:
               ignore: /.*/            
