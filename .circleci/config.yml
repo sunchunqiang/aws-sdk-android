@@ -14,6 +14,27 @@ jobs:
           name: build the whole project
           command: bash gradlew build -x test
 
+  buildforrelease:
+    working_directory: ~/code
+    docker:
+      - image: circleci/android:api-27-alpha
+    environment:
+      JVM_OPTS: -Xmx3200m
+    steps:
+      - checkout
+      - run:
+          name: build the whole project
+          command: bash gradlew build -x test
+      - run:
+          name: copy libs
+          command:
+             rootfolder=$(pwd)
+             python3 CircleciScripts/copylibs.py  "$(pwd)" lib"
+      - save_cache:
+          key: Libs-{{ .Revision }}
+          paths:
+            - lib
+
   unittest:
     working_directory: ~/code
     docker:
@@ -22,11 +43,6 @@ jobs:
       JVM_OPTS: -Xmx1024m
     steps:
       - checkout
-
-      - run:
-          name: test
-          command : |
-            mkdir -p ~/.gradle && echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
       - run:
           name: run unit tests
           command: |
@@ -125,7 +141,6 @@ jobs:
             - docs/reference/
 
 
-
   tag_doc:
     docker:
       - image: circleci/android:api-27-alpha
@@ -215,14 +230,16 @@ jobs:
             version=2.10.0
             sdkversion="aws-android-sdk-$version"
             echo "sdkversion=$sdkversion" >> $BASH_ENV
-            git checkout resource aws-android-sdk
+            git checkout  resources
+            git checkout master
+            git checkout resources aws-android-sdk
             mv aws-android-sdk "$sdkversion"
+      - restore_cache:
+          key: Libs-{{ .Revision }}        
       - run:
           name: copy libs
           command:
-             bash gradlew build -x test
-             rootfolder=$(pwd)
-             python3 CircleciScripts/copylibs.py  "$sdkversion/lib"
+             mv lib  "$sdkversion/lib"
       - restore_cache:
           key: API-Reference-{{ .Revision }}
       - run:
@@ -232,12 +249,12 @@ jobs:
             cp -R docs/reference/*  "$sdkversion/documentation/javadoc"
       - run:
           name: zip sdk folder
+          command: |
             zip -r "$sdkversion.zip" "$sdkversion"
       - run:
           name: install aws cli
           command: |
             sudo pip install awscli
-
       - run:
           name: upload to s3
           command: |
@@ -273,7 +290,15 @@ workflows:
   #             only: /^release_v[0-9]+.[0-9]+.[0-9]+$/ 
   release_sdk:
     jobs:
-      - release_tag:                    
+      - buildforrelease:
+          filters:
+            branches:
+              ignore: /.*/            
+            tags:
+              only: /^release_v[0-9]+.[0-9]+.[0-9]+$/      
+      - release_tag:    
+          requires:
+            - buildforrelease                        
           filters:
             branches:
               ignore: /.*/            
@@ -291,7 +316,7 @@ workflows:
 
       - release_javadoc:    
           requires:
-            - release_maven  
+            - release_tag  
           filters:
             branches:
               ignore: /.*/            
