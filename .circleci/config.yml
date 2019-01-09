@@ -22,11 +22,6 @@ jobs:
       JVM_OPTS: -Xmx1024m
     steps:
       - checkout
-
-      - run:
-          name: test
-          command : |
-            mkdir -p ~/.gradle && echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
       - run:
           name: run unit tests
           command: |
@@ -215,7 +210,9 @@ jobs:
             version=2.10.0
             sdkversion="aws-android-sdk-$version"
             echo "sdkversion=$sdkversion" >> $BASH_ENV
-            git checkout resource aws-android-sdk
+            git checkout  resources
+            git checkout master
+            git checkout resources aws-android-sdk
             mv aws-android-sdk "$sdkversion"
       - run:
           name: copy libs
@@ -232,12 +229,12 @@ jobs:
             cp -R docs/reference/*  "$sdkversion/documentation/javadoc"
       - run:
           name: zip sdk folder
+          command: |
             zip -r "$sdkversion.zip" "$sdkversion"
       - run:
           name: install aws cli
           command: |
             sudo pip install awscli
-
       - run:
           name: upload to s3
           command: |
@@ -291,7 +288,7 @@ workflows:
 
       - release_javadoc:    
           requires:
-            - release_maven  
+            - release_tag  
           filters:
             branches:
               ignore: /.*/            
