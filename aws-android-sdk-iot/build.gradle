@@ -10,6 +10,8 @@ dependencies {
     testImplementation "org.robolectric:robolectric:2.4"
     testImplementation "org.mockito:mockito-all:1.10.5"
 }
-
+test {
+    exclude '**IntegrationTest.class'
+}
 sourceCompatibility = "1.7"
 targetCompatibility = "1.7"
