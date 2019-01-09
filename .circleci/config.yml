@@ -12,7 +12,31 @@ jobs:
       - checkout
       - run:
           name: build the whole project
+          command: |
+            bash gradlew build -x test
+
+  buildforrelease:
+    working_directory: ~/code
+    docker:
+      - image: circleci/android:api-27-alpha
+    environment:
+      JVM_OPTS: -Xmx3200m
+    steps:
+      - checkout
+      - run:
+          name: build the whole project
           command: bash gradlew build -x test
+      - run:
+          name: copy libs
+          command: |
+             rootfolder=$(pwd)
+             python3 CircleciScripts/copylibs.py  "$(pwd)" "$(pwd)/lib"
+             echo "contents in lib:"
+             ls lib
+      - save_cache:
+          key: Libs-{{ .Revision }}
+          paths:
+            - lib
 
   unittest:
     working_directory: ~/code
@@ -22,11 +46,6 @@ jobs:
       JVM_OPTS: -Xmx1024m
     steps:
       - checkout
-
-      - run:
-          name: test
-          command : |
-            mkdir -p ~/.gradle && echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
       - run:
           name: run unit tests
           command: |
@@ -79,7 +98,10 @@ jobs:
       - run:
           name: download third party libararies 
           command: |
-            aws s3 sync  s3://android-circleci-payload/third-party/  ./libs                
+            aws s3 cp  s3://android-circleci-payload/third-party/third-party.zip third-party.zip
+            unzip third-party.zip
+            cp "$ANDROID_HOME/platforms/android-27/android.jar"  third-party/android.jar
+
 
       - run:
           name: set version
@@ -92,7 +114,7 @@ jobs:
           name: generate documents
           command: |
             currentfolder=$(pwd)
-            python3 CircleciScripts/generatejavadoc.py CircleciScripts/ReleaseConfiguration.json "$currentfolder" build/javadoc libs "$release_version"
+            python3 CircleciScripts/generatejavadoc.py CircleciScripts/ReleaseConfiguration.json "$currentfolder" build/javadoc third-party "$release_version"
       
 
       - run:
@@ -117,13 +139,13 @@ jobs:
           name: check in documents
           command: |
             git add docs/reference
+            git rm --cached  CircleciScripts/preserveolddocument.sh
             git commit -m "AWS SDK for Android $release_version"
             git push -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git  
       - save_cache:
           key: API-Reference-{{ .Revision }}
           paths:
             - docs/reference/
-
 
 
   tag_doc:
@@ -143,7 +165,7 @@ jobs:
 
   release_maven:
     macos: 
-      xcode: "10.1.0"
+      xcode: "9.4.1"
 
     steps:
       - checkout    
@@ -151,6 +173,7 @@ jobs:
           name: install android sdk tools
           command: |
             brew tap caskroom/cask
+            echo "brew cask install android-sdk ..."
             brew cask install android-sdk
       - run:
           name: install aws cli
@@ -210,19 +233,30 @@ jobs:
     steps:
       - checkout   
       - run:
-          name: download sdk resource
+          name: install aws cli
           command: |
-            version=2.10.0
+            sudo pip install awscli
+
+      - run:
+          name: copy sdk resource
+          command: |
+            release_tag=${CIRCLE_TAG}
+            version=$(echo "$release_tag" | sed 's|.*v\([0-9\.]*\).*|\1|') 
             sdkversion="aws-android-sdk-$version"
             echo "sdkversion=$sdkversion" >> $BASH_ENV
-            git checkout resource aws-android-sdk
-            mv aws-android-sdk "$sdkversion"
+            mkdir -p "$sdkversion"
+            cp -R resources/* "$sdkversion/"
+            ls $sdkversion
+      - restore_cache:
+          key: Libs-{{ .Revision }}        
       - run:
           name: copy libs
-          command:
-             bash gradlew build -x test
-             rootfolder=$(pwd)
-             python3 CircleciScripts/copylibs.py  "$sdkversion/lib"
+          command: |
+            pwd
+            ls
+            mkdir -p "$sdkversion/lib"
+            ls lib
+            cp -R  lib/*  "$sdkversion/lib"
       - restore_cache:
           key: API-Reference-{{ .Revision }}
       - run:
@@ -231,19 +265,21 @@ jobs:
             mkdir -p "$sdkversion/documentation/javadoc"
             cp -R docs/reference/*  "$sdkversion/documentation/javadoc"
       - run:
-          name: zip sdk folder
-            zip -r "$sdkversion.zip" "$sdkversion"
-      - run:
-          name: install aws cli
+          name: copy third party 
           command: |
-            sudo pip install awscli
-
+            aws s3 cp  s3://android-circleci-payload/third-party/third-party.zip third-party.zip
+            unzip third-party.zip
+            mv third-party  "$sdkversion/third-party"           
+      - run:
+          name: zip sdk folder
+          command: |
+            zip -r "$sdkversion.zip" "$sdkversion"
       - run:
           name: upload to s3
           command: |
             aws configure --profile android_stage set region us-east-1
             echo -e "[android_stage]\naws_access_key_id=${AWS_ACCESS_KEY_ID_ANDROID}\naws_secret_access_key=${AWS_SECRET_ACCESS_KEY_ANDROID}\n" >> ~/.aws/credentials
-            aws s3 cp "$sdkversion.zip" s3:///mylistname/test  --profile android_stage     
+            aws s3 cp "$sdkversion.zip" "s3://mylistname/test/$sdkversion.zip"   --profile android_stage     
 
 
 workflows:
@@ -273,7 +309,15 @@ workflows:
   #             only: /^release_v[0-9]+.[0-9]+.[0-9]+$/ 
   release_sdk:
     jobs:
-      - release_tag:                    
+      - buildforrelease:
+          filters:
+            branches:
+              ignore: /.*/            
+            tags:
+              only: /^release_v[0-9]+.[0-9]+.[0-9]+$/      
+      - release_tag:    
+          requires:
+            - buildforrelease                        
           filters:
             branches:
               ignore: /.*/            
@@ -291,7 +335,7 @@ workflows:
 
       - release_javadoc:    
           requires:
-            - release_maven  
+            - release_tag  
           filters:
             branches:
               ignore: /.*/            
