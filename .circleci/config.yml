@@ -1,6 +1,22 @@
 # Android CircleCI 2.0 configuration file
 #
-version: 2
+version: 2.1
+commands:
+  configure_aws:
+    description: >-
+      install aws cli and configure android aws release profile 
+    steps:
+      - run:
+          name: install aws cli
+          command: |
+            sudo pip install awscli
+      - run:
+          name: configure aws profile
+          command: |
+            aws configure --profile android_sdk_release set region us-east-1
+            echo -e "[android_sdk_release]\naws_access_key_id=${AWS_ACCESS_KEY_ID_ANDROID}\naws_secret_access_key=${AWS_SECRET_ACCESS_KEY_ANDROID}\n" >> ~/.aws/credentials
+
+
 jobs:
   build:
     working_directory: ~/code
@@ -51,7 +67,15 @@ jobs:
             python3 CircleciScripts/run_unittest.py test_results "$currentfolder"
       - run:
           name : check unit test result 
-          command : bash CircleciScripts/check_testresult.sh test_results         
+          command : |
+            echo "testresult=$testresult"
+            if [ "$testresult" == "0" ] 
+            then
+                echo "test succeed!"
+            else
+                echo "There are test failures"
+                exit 1
+            fi       
       - store_artifacts:
           path: test_results
 
@@ -153,6 +177,7 @@ jobs:
       xcode: "10.1.0"  #xocde version number does not matter here, we just need a macos image
     steps:
       - checkout    
+      - configure_aws
       - run:
           name: install android sdk tools
           command: |
@@ -162,10 +187,6 @@ jobs:
             brew doctor  
             brew tap caskroom/cask
             brew cask install android-sdk
-      - run:
-          name: install aws cli
-          command: |
-            sudo pip install awscli
       - run:
           name: install android build tools
           command: |
@@ -207,11 +228,6 @@ jobs:
             echo "$M2_HOME"
             bash CircleciScripts/maven_release.sh
       - run:
-          name: configure aws profile
-          command: |
-            aws configure --profile android_sdk_release set region us-east-1
-            echo -e "[android_sdk_release]\naws_access_key_id=${AWS_ACCESS_KEY_ID_ANDROID}\naws_secret_access_key=${AWS_SECRET_ACCESS_KEY_ANDROID}\n" >> ~/.aws/credentials
-      - run:
           name: upload to maven
           command: |
             version=$(echo "${CIRCLE_TAG}" | sed 's|.*v\([0-9\.]*\).*|\1|') 
@@ -224,10 +240,7 @@ jobs:
       JVM_OPTS: -Xmx1024m     
     steps:
       - checkout   
-      - run:
-          name: install aws cli
-          command: |
-            sudo pip install awscli
+      - configure_aws
       - run:
           name: copy sdk resource
           command: |
@@ -264,9 +277,7 @@ jobs:
       - run:
           name: upload to s3
           command: |
-            aws configure --profile android_sdk_release set region us-east-1
-            echo -e "[android_sdk_release]\naws_access_key_id=${AWS_ACCESS_KEY_ID_ANDROID}\naws_secret_access_key=${AWS_SECRET_ACCESS_KEY_ANDROID}\n" >> ~/.aws/credentials
-            aws s3 cp "$sdkversion.zip" "s3://aws-android-sdk-stage/$sdkversion.zip"   --profile android_stage   
+            aws s3 cp "$sdkversion.zip" "s3://aws-android-sdk-stage/$sdkversion.zip"   --profile android_sdk_release   
             aws s3 cp "$sdkversion.zip" "s3://aws-android-sdk-stage/latest/aws-android-sdk.zip"   --profile android_sdk_release   
       - run:
           name: invalidate cloudfront
