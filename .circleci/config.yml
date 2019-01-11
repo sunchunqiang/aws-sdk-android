@@ -51,7 +51,15 @@ jobs:
             python3 CircleciScripts/run_unittest.py test_results "$currentfolder"
       - run:
           name : check unit test result 
-          command : bash CircleciScripts/check_testresult.sh test_results         
+          command : |
+            echo "sdkVersion=$sdkVersion"
+            echo "testresult=$testresult"
+            if $testresult != "0" 
+            then
+                echo "There are test failures"
+            else
+                echo "test suceed"
+            fi       
       - store_artifacts:
           path: test_results
 

@@ -16,7 +16,7 @@ files = {
 
 }
 
-for source,target in files.items: 
+for source,target in files.items(): 
 	s = os.path.join(root, source)
 	t = os.path.join(root,t)
 	runcommand("mkdir -p '{0}'".format(os.path.dirname(t)))
