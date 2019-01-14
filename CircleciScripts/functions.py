@@ -10,8 +10,8 @@ import re
 
 TestType  = namedtuple('TestType', ['value', 'testAction', 'displayString'])
 class TestTypes(Enum):
-    UnitTest = TestType(1, 'test -PexcludeTests=**/*IntegrationTest.class', 'unit test')
-    integration = TestType(2, 'connectedAndroidTest', 'integration test')
+    UnitTest = TestType(1, 'test -PexcludeTests=**/*IntegrationTest.class', 'unit test'),
+    IntegrationTest = TestType(2, 'connectedAndroidTest', 'integration test')
     @property
     def displayString(self):
         return self.value.displayString
