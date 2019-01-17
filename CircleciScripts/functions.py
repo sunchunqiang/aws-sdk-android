@@ -55,7 +55,6 @@ def runtest(module, testtype, results):
     dest = "{0}/{1}".format(results, module)
     runcommand('mkdir -p "{0}"'.format(dest))
     source = "{0}/build/reports/*".format(module)             
-    runcommand('echo "export testresult=0" >> $BASH_ENV')
     if runcommand("cp -rf {0} {1}".format(source,dest)) != 0 :
         return 1
     if exit_code != 0 :    
