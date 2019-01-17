@@ -159,6 +159,7 @@ jobs:
       - run:
           name: release the tag
           command: |
+            tagname="AWS SDK for Android $release_version"
             tagdescription=$(sed -n "/## \[Release $release_version\]/,/## \[Release [0-9]*\.[0-9]*\.[0-9]\]/p"  CHANGELOG.md | sed '1d' | sed '$d')
             echo "$tagdescription" | github-release release  -s ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME}  -t $release_tag   --name  "$tagname" -d -
 
@@ -360,12 +361,12 @@ jobs:
       - run:
           name: upload to s3
           command: |
-            aws s3 cp "$sdkNameWithVersion.zip" "s3://$release_bucket/$sdkNameWithVersion.zip" --profile android_sdk_release
-            aws s3 cp "$sdkNameWithVersion.zip" "s3://$release_bucket/latest/$sdkName.zip" --profile android_sdk_release
+            aws s3api put-object --bucket "$release_bucket" --key "$sdkNameWithVersion.zip" --body "$sdkNameWithVersion.zip" --content-disposition "attachment;filename="$sdkNameWithVersion.zip"" --acl public-read  --profile android_sdk_release
+            aws s3api put-object --bucket "$release_bucket" --key "latest/$sdkName.zip" --body "$sdkNameWithVersion.zip" --content-disposition "attachment;filename="$sdkNameWithVersion.zip"" --acl public-read  --profile android_sdk_release
       - run:
           name: invalidate cloudfront
           command: |
-            python3 CircleciScripts/cloudfront_invalidate.py android_sdk_release  "${android_distribution_id}" "$sdkName.zip"
+            python3 CircleciScripts/cloudfront_invalidate.py android_sdk_release  "${android_distribution_id}" "latest/$sdkName.zip"
 
 workflows:
   version: 2
@@ -414,7 +415,6 @@ workflows:
           requires:
             - buildforrelease
             - release_javadoc
-            - release_maven
           filters:
             branches:
               ignore: /.*/
