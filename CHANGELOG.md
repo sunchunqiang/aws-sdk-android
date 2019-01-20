@@ -3,7 +3,7 @@
 ## [Release 2.11.0](https://github.com/aws/aws-sdk-android/releases/tag/release_v2.11.0)
 
 ### Enhancements
-
+    
 * **Amazon S3**
   * Introduced `TransferNetworkLossHandler`, a utility that listens for network connectivity changes. `TransferNetworkLossHandler` pauses the on-going transfers when the network goes offline and resumes the transfers that were paused when the network comes back online.
   * `TransferService` will be moved to foreground state when the device is running Android Oreo (API Level 26) and above. 
