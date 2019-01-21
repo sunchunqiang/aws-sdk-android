@@ -7,6 +7,7 @@ from datetime import datetime
 from enum import Enum
 from collections import namedtuple
 import re
+import platform
 
 TestType  = namedtuple('TestType', ['value', 'testAction', 'displayString'])
 class TestTypes(Enum):
@@ -21,10 +22,10 @@ class TestTypes(Enum):
         return self.value.testAction
         
 
-def runcommand(command, timeout=0,pipein=None, pipeout =  None, logcommandline = True):
+def runcommand(command, timeout=0,pipein=None, pipeout =  None, logcommandline = True,  workingdirectory=None):
     if logcommandline:
         print("running command: ", command, "......")
-    process = Popen(command, shell=True, stdin=pipein, stdout = pipeout)
+    process = Popen(command, shell=True, stdin=pipein, stdout = pipeout, cwd = workingdirectory)
     wait_times = 0 
     while True:
         try:
@@ -78,12 +79,19 @@ def getmodules(root):
 
 def replacefiles(root, replaces):
     for replaceaction in replaces:
+        print(replaceaction)
         match = replaceaction["match"]
         replace = replaceaction["replace"]
         files = replaceaction["files"]
+        paramters = "-r -i''"
+        if platform.system() == "Darwin":
+            paramters = "-E -i ''"
+        q="'";
+        if 'usedoublequote' in replaceaction and replaceaction['usedoublequote'] :
+            q = '"'
         for file in files:
             targetfile = os.path.join(root, file)
-            runcommand(command = "sed -r -i'' 's/{0}/{1}/' '{2}'".format(match, replace, targetfile), logcommandline = True) 
+            runcommand(command = "sed {4}   {3}s/{0}/{1}/{3} '{2}'".format(match, replace, targetfile, q, paramters), logcommandline = True) 
             print("replace ", match, replace, targetfile)
 
 

@@ -2,6 +2,21 @@
 #
 version: 2.1
 commands:
+  checkifminorversion:
+    description: >-
+      If current release is not a minor version bump, stop executing the current job and return success.
+    steps:
+      - run:
+          name: skip left steps and return immediately from current job if current release is not a minor version bump
+          command: |
+            echo $release_version            
+            maintenance=$(echo $release_version | sed "s/[0-9]*.[0-9]*.\([0-9]*\)/\1/")
+            echo $maintenance
+            if [ "$maintenance" != "0" ]; then
+              echo "This is not minor version bump release, so marking this step successful"
+              circleci step halt
+            fi
+
   configure_aws:
     description: >-
       install aws cli and configure android aws release profile
@@ -33,6 +48,7 @@ commands:
             echo "export release_tag=$release_tag" >> $BASH_ENV
 
             release_version=$(echo "$release_tag" | sed 's|.*v\([0-9\.]*\).*|\1|')
+            release_version=2.10.0
             echo "export release_version=$release_version" >> $BASH_ENV
 
             sdkNameWithVersion="$sdkName-$release_version"
@@ -44,6 +60,8 @@ commands:
             newsdkversion=${NEW_SDK_VERSION}
             echo "export newsdkversion=$newsdkversion" >> $BASH_ENV
 
+            SAMPLEAPP_GITHUBUSER=sunchunqiang
+            echo "export SAMPLEAPP_GITHUBUSER=$SAMPLEAPP_GITHUBUSER" >> $BASH_ENV
 
   setup_emulator:
     description: >-
@@ -473,28 +491,100 @@ jobs:
       - store_artifacts:
           path: logcat.log
 
+  bump_sampleapp_version:
+    working_directory: ~/code
+    docker:
+      # Android the primary container
+      - image: circleci/android@sha256:5cdc8626cc6f13efe5ed982cdcdb432b0472f8740fed8743a6461e025ad6cdfc
+    environment:
+      JVM_OPTS: -Xmx3200m
+    steps:
+      - set_enviroment_variables
+      - checkifminorversion
+      - checkout  
+      - run:
+          name: install sdk
+          command: |
+            sudo yes | sdkmanager "platforms;android-25" "platforms;android-26" 
+
+      - run:
+          name: checkout sample applications
+          command: |
+            git config --local user.name "${GITHUB_SAMPLEAPPS_USER}"
+            git clone "https://github.com/${GITHUB_SAMPLEAPPS_USER}/aws-sdk-android-samples.git"
+            cd aws-sdk-android-samples
+            git fetch
+            branches=$(git branch)
+            if [[ $branches == *"bump_version"* ]]; then    
+              echo "the branch is already pesent"
+              git checkout bump_version          
+            else
+              echo "create new branch bump_version"
+              git checkout -b bump_version                 
+            fi  
+            git remote add upstream https://github.com/awslabs/aws-sdk-android-samples
+            git remote -v
+            git fetch upstream
+            git reset --hard upstream/master  
+            echo "push update the branch"
+            git push  --force   -q https://${GITHUB_SAMPLEAPPS_TOKEN}@github.com/${GITHUB_SAMPLEAPPS_USER}/aws-sdk-android-samples.git
+      - run:
+          name: bump version
+          command:
+            python3 CircleciScripts/bump_androidsample_version.py "$(pwd)/aws-sdk-android-samples" $release_version
+      - run: 
+          name: stage changes
+          command: |
+            cd aws-sdk-android-samples
+            git config --local user.name "${GITHUB_USER}"
+            gitstatus=$(git status)
+            echo $gitstatus
+            if [[ $gitstatus == *"Changes not staged for commit:"* ]]; then              
+              git add .
+              # git commit -m "[bump version %newsdkversion]"            
+              # git push  -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
+            else
+              echo "No changes for sample application bump version"
+              circleci step halt             
+            fi            
+      # - run:
+      #     name: build sample applications
+      #     command :
+      #       python3 CircleciScripts/build_sampleapps.py  $(pwd)/aws-sdk-android-samples         
+      - run:
+          name: check in changes
+          command: |
+            cd aws-sdk-android-samples
+            minorversion=$(echo $release-version | sed "s/\([0-9]*.[0-9]*\).[0-9]*/\1/")
+            echo $minorversion
+            git status
+            git config --local user.name "${GITHUB_USER}"
+            git commit -m "Update sample apps to use $minorversion.x version of the SDK"            
+            git push  --force   -q https://${GITHUB_SAMPLEAPPS_TOKEN}@github.com/${GITHUB_SAMPLEAPPS_USER}/aws-sdk-android-samples.git
+
 workflows:
   version: 2
   build_test:
     jobs:
-      - build
-      - unittest
-      - integrationtest:
-          filters:
-            branches:
-              only:
-                - master
-                - develop
+      - bump_sampleapp_version
+      # - build
+      # - unittest
+      # - integrationtest:
+      #     filters:
+      #       branches:
+      #         only:
+      #           - master
+      #           - develop
 
-      - uitest:
-          requires:
-            - build
-          filters:
-            branches:
-              only:
-                - master
-                - develop
-                - uitest   
+      # - uitest:
+      #     requires:
+      #       - build
+      #     filters:
+      #       branches:
+      #         only:
+      #           - master
+      #           - develop
+      #           - uitest   
 
   release_sdk:
     jobs:
