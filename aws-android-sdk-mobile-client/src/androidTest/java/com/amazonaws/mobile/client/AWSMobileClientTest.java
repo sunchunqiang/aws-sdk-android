@@ -17,7 +17,6 @@ import org.json.JSONException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -51,7 +50,6 @@ public class AWSMobileClientTest extends AWSMobileClientTestBase {
     public static final String IDENTITY_ID = "redacted";
     public static final String NEW_PASSWORD = "new1234Password!";
     public static final int THROTTLED_DELAY = 5000;
-
 
     Context appContext;
     AWSMobileClient auth;
@@ -241,7 +239,7 @@ public class AWSMobileClientTest extends AWSMobileClientTestBase {
     public void testSignInWaitOIDC() throws Exception {
         final AtomicReference<Boolean> hasWaited = new AtomicReference<Boolean>();
         hasWaited.set(false);
-       // writeUserpoolsTokens(appContext, auth.getConfiguration().optJsonObject("CognitoUserPool").getString("AppClientId"), USERNAME, 3600L);
+//        writeUserpoolsTokens(appContext, auth.getConfiguration().optJsonObject("CognitoUserPool").getString("AppClientId"), USERNAME, 3600L);
         setTokensDirectly(appContext, AWSMobileClient.getInstance().getLoginKey(), "fakeToken", "someIdentityId");
         listener = new UserStateListener() {
             @Override
@@ -358,7 +356,7 @@ public class AWSMobileClientTest extends AWSMobileClientTestBase {
         countDownLatch.await(5, TimeUnit.SECONDS);
         assertFalse(triggered.get());
     }
-    @Ignore("This test case may get other test cases stuck")
+
     @Test
     public void testGetTokensStress() throws Exception {
         final SignInResult signInResult = auth.signIn(USERNAME, PASSWORD, null);
