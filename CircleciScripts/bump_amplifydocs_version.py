@@ -10,6 +10,7 @@ maxminorversion = newsdkversion[0:lastdot]
 
 replaces = [
     {
+        "exclude" : "com.amazonaws:aws-android-sdk-appsync",
         "match" : r"(com.amazonaws:aws-android-sdk-.+:)[0-9]+\.[0-9]+\.\+", 
         "replace" : r"\1[maxminorversion].+",
         "files" : [
@@ -24,14 +25,7 @@ replaces = [
             "start.md",
             "storage.md",
         ]       
-    } ,
-    {
-        "match" : "(\"aws-android-sdk-.+:)[0-9]+\.[0-9]+\.\+", 
-        "replace" : r"\1[maxminorversion].+",
-        "files" : [
-            "manualsetup.md"
-        ]        
-    } ,
+    } 
 ]
 for replaceaction in replaces:
     replaceaction["replace"] = replaceaction["replace"].replace("[maxminorversion]", maxminorversion)
