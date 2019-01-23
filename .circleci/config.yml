@@ -2,7 +2,7 @@
 #
 version: 2.1
 commands:
-  checkifminorversion:
+  quit_for_nominorversion:
     description: >-
       If current release is not a minor version bump, stop executing the current job and return success.
     steps:
@@ -48,7 +48,6 @@ commands:
             echo "export release_tag=$release_tag" >> $BASH_ENV
 
             release_version=$(echo "$release_tag" | sed 's|.*v\([0-9\.]*\).*|\1|')
-            release_version=2.10.0
             echo "export release_version=$release_version" >> $BASH_ENV
 
             sdkNameWithVersion="$sdkName-$release_version"
@@ -56,12 +55,6 @@ commands:
 
             release_type=$(echo "$release_tag" | sed 's|\(.*\)_v\([0-9\.]*\).*|\1|')
             echo "export release_type=$release_type" >> $BASH_ENV
-
-            newsdkversion=${NEW_SDK_VERSION}
-            echo "export newsdkversion=$newsdkversion" >> $BASH_ENV
-
-            SAMPLEAPP_GITHUBUSER=sunchunqiang
-            echo "export SAMPLEAPP_GITHUBUSER=$SAMPLEAPP_GITHUBUSER" >> $BASH_ENV
 
   setup_emulator:
     description: >-
@@ -85,9 +78,7 @@ commands:
           command: |
             echo "wait for emulator to have booted"
             circle-android wait-for-boot
-            echo "unlock the emulator screen"
-            sleep 30
-            adb shell input keyevent 82  
+            python3 CircleciScripts/unlock_emulatorscreen.py 
 
 
   bump_version_pre:
@@ -209,6 +200,7 @@ jobs:
       - run:
           name: release the tag
           command: |
+            tagname="AWS SDK for Android $release_version"
             tagdescription=$(sed -n "/## \[Release $release_version\]/,/## \[Release [0-9]*\.[0-9]*\.[0-9]\]/p"  CHANGELOG.md | sed '1d' | sed '$d')
             echo "$tagdescription" | github-release release  -s ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME}  -t $release_tag   --name  "$tagname" -d -
 
@@ -410,12 +402,12 @@ jobs:
       - run:
           name: upload to s3
           command: |
-            aws s3 cp "$sdkNameWithVersion.zip" "s3://$release_bucket/$sdkNameWithVersion.zip" --profile android_sdk_release
-            aws s3 cp "$sdkNameWithVersion.zip" "s3://$release_bucket/latest/$sdkName.zip" --profile android_sdk_release
+            aws s3api put-object --bucket "$release_bucket" --key "$sdkNameWithVersion.zip" --body "$sdkNameWithVersion.zip" --content-disposition "attachment;filename=$sdkNameWithVersion.zip" --acl public-read  --profile android_sdk_release
+            aws s3api put-object --bucket "$release_bucket" --key "latest/$sdkName.zip" --body "$sdkNameWithVersion.zip" --content-disposition "attachment;filename=$sdkNameWithVersion.zip" --acl public-read  --profile android_sdk_release
       - run:
           name: invalidate cloudfront
           command: |
-            python3 CircleciScripts/cloudfront_invalidate.py android_sdk_release  "${android_distribution_id}" "$sdkName.zip"
+            python3 CircleciScripts/cloudfront_invalidate.py android_sdk_release  "${android_distribution_id}" "latest/$sdkName.zip"
 
   integrationtest:
     working_directory: ~/code
@@ -438,6 +430,10 @@ jobs:
       - run: 
           name: Install lxml
           command: sudo pip3 install lxml      
+      - run:
+          name: install sdk
+          command: |
+            sudo yes | sdkmanager "platforms;android-27"
       - setup_emulator         
       - run:
           name: Configure test information
@@ -462,50 +458,6 @@ jobs:
             fi       
       - store_artifacts:
           path: "~/test_results"
-
-  bump_version:
-    docker:
-      - image: circleci/android:api-27-alpha
-    environment:
-      JVM_OPTS: -Xmx1024m
-    steps:
-      - checkout
-      - set_enviroment_variables
-      - run: 
-          name: install python3-pip
-          command: |
-            sudo apt-get update
-            sudo apt-get -y install python3-pip     
-      - run: 
-          name: Install json parser
-          command: sudo pip3 install demjson
-      - run: 
-          name: Install lxml
-          command: sudo pip3 install lxml    
-      - run:
-          name: checkout_developbranch
-          command : |
-            git fetch
-            git checkout develop
-            git checkout integrationtest CircleciScripts/
-      - run:
-          name: bump version
-          command: |
-            python3 CircleciScripts/bump_version.py "$(pwd)" $newsdkversion 1.0.0
-      - run:
-          name: check in the change 
-          command: |
-
-            gitstatus=$(git status)
-
-            if [[ $gitstatus == *"Changes not staged for commit:"* ]]; then
-              git config --local user.name "${GITHUB_USER}"
-              git add .
-              git commit -m "[bump version %newsdkversion]"            
-              git push  -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
-            else
-              echo "No changes"
-            fi         
   uitest:
     working_directory: ~/code
     docker:
@@ -557,7 +509,7 @@ jobs:
       JVM_OPTS: -Xmx3200m
     steps:
       - set_enviroment_variables
-      - checkifminorversion
+      - quit_for_nominorversion
       - checkout  
       - run:
           name: set_bumpversion_enviroment
@@ -589,7 +541,7 @@ jobs:
       JVM_OPTS: -Xmx3200m
     steps:
       - set_enviroment_variables
-      - checkifminorversion
+      - quit_for_nominorversion
       - checkout  
       - run:
           name: set_bumpversion_enviroment
