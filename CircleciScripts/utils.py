@@ -45,10 +45,32 @@ def runcommand(command, timeout=0,pipein=None, pipeout =  None, logcommandline =
     exit_code = process.wait()    
     return exit_code
 
+def getFailedTestcases(indexHtml):
+    content = open(indexHtml, 'r').read() 
+    #Notice  it seems andriod integration test runner has a bug. </html> is missing from index.html 
+    if not content.endswith("</html>"):
+        content += "</html>"
+    root = ET.XML(content) 
+    # root = tree.getroot() 
 
-def runtest(module, testtype, results):
+    failedtests = set()
+    for failure in root.findall(".//td[@class='failures']"):  
+        a = failure.find('a')
+        if a is None:
+            continue
+        failedhref = a.get('href')
+        index = failedhref.find(".html#")
+        if index > 0 :
+            classname = failedhref[:index]
+            methodname = failedhref[index+6:]
+            failedtest = classname + "/" + methodname
+            print(failedtest)
+            failedtests.add(failedtest)
+         
+    return failedtests     
 
-    
+
+def runtest(module, testtype, results, ignoreFailures = None):
     testcommand = "bash gradlew {0}:{1} ".format(module, testtype.testAction)
     print("Running {0} for {1} .......".format(testtype.displayString, module))   
     exit_code = runcommand(testcommand)   
@@ -56,10 +78,21 @@ def runtest(module, testtype, results):
     runcommand('mkdir -p "{0}"'.format(dest))
     source = "{0}/build/reports/*".format(module)             
     if runcommand("cp -rf {0} {1}".format(source,dest)) != 0 :
+        print("Failed to copy test result")
         return 1
     if exit_code != 0 :    
         print("test failed for {0}".format(module))
-        runcommand('echo "export testresult=1" >> $BASH_ENV')  
+        ignorefailure = False 
+        if ignoreFailures is not None:
+            ignoreFailures = set(ignoreFailures)
+            indexHtml = os.path.join(module , "build/reports/androidTests/connected/index.html")
+            failedtests = getFailedTestcases(indexHtml)
+            if failedtests and failedtests.issubset(ignoreFailures):
+                ignorefailure = True  
+            else :
+                print("Unable ignore failures: ", failedtests - ignoreFailures)
+        if not ignorefailure:
+            runcommand('echo "export testresult=1" >> $BASH_ENV')  
 
     return 0
 
