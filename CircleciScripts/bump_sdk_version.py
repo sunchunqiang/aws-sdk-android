@@ -1,6 +1,6 @@
 from lxml import etree
-from functions import getmodules
-from functions import replacefiles
+from utils import getmodules
+from utils import replacefiles
 import sys
 import os
 def bump_pomxml(filename, newsdkversion, newasfversion):
@@ -41,7 +41,8 @@ modules = getmodules(root)
 modules.append('') # add root pom.xml
 for module in modules:
     pomfile = os.path.join(root,module, "pom.xml")
-    bump_pomxml(pomfile, newsdkversion, newasfversion)
+    if os.path.isfile(pomfile):
+        bump_pomxml(pomfile, newsdkversion, newasfversion)
 
 
 #define which files whose version number should be replaced and how to replace
@@ -68,6 +69,13 @@ replaces = [
             "aws-android-sdk-core/src/test/java/com/amazonaws/util/VersionInfoUtilsTest.java"
         ]       
     } ,
+    {
+        "match" : '%releasing_version%', 
+        "replace" : '[version]',
+        "files" : [
+            "CHANGELOG.md"
+        ]       
+    } ,    
 ]
 
 #replace version number in other files

@@ -1,5 +1,5 @@
 # Android CircleCI 2.0 configuration file
-#
+# 
 version: 2.1
 commands:
   quit_for_nominorversion:
@@ -56,6 +56,8 @@ commands:
           command: |
             sdkName=aws-android-sdk
             echo "export sdkName=$sdkName" >> $BASH_ENV
+
+            # echo "export newsdkversion=2.7.7" >> $BASH_ENV
 
             release_bucket=${RELEASE_BUCKET}
             echo "export release_bucket=$release_bucket" >> $BASH_ENV
@@ -153,7 +155,16 @@ commands:
             echo "title:$title"
             echo "content:$content"
             python3 ../CircleciScripts/create_pullrequest.py  "${GITHUB_BUMPVERSION_USER}" "${GITHUB_BUMPVERSION_TOKEN}" "$title" "$content" "master" "${GITHUB_BUMPVERSION_USER}:bump_version" ${bumpversion_repo_user} ${bumpversion_repo_name}
-
+  setup_android_platform23:
+    description: >-
+      setup android platform 23
+    steps:
+      - run:
+          name: download android platform 23
+          command: |
+            # This is required becaused AWSCore has a compileOnly
+            # dependency on API Level 23.
+            sudo yes | sdkmanager "platforms;android-23"
 
 jobs:
   build:
@@ -165,6 +176,7 @@ jobs:
     steps:
       - checkout
       - generate_gradle_wrapper
+      - setup_android_platform23
       - run:
           name: build the whole project
           command: |
@@ -188,6 +200,7 @@ jobs:
     steps:
       - checkout
       - generate_gradle_wrapper
+      - setup_android_platform23
       - run:
           name: run unit tests
           command: |
@@ -320,7 +333,7 @@ jobs:
       - run:
           name: Install Android build tools
           command: |
-            sudo yes | /usr/local/bin/sdkmanager "platforms;android-21" "platforms;android-27" "build-tools;27.0.1"  "extras;google;m2repository" "extras;android;m2repository"
+            sudo yes | /usr/local/bin/sdkmanager "platforms;android-21" "platforms;android-23" "platforms;android-27" "build-tools;27.0.1"  "extras;google;m2repository" "extras;android;m2repository"
             /usr/local/bin/sdkmanager --update
       - run:
           name: Install GPG
@@ -470,9 +483,11 @@ jobs:
               if [ "${SKIP_INTEGRATIONTEST}" == "TRUE" ]; then
                 echo "project enviroment variabe SKIP_INTEGRATIONTEST is set with TRUE, skip all integration tests"
                 circleci step halt
-              fi          
+              fi     
+              circleci step halt     
       - checkout
       - configure_aws
+      - setup_android_platform23
       - run: 
           name: install python3-pip
           command: |
@@ -493,12 +508,12 @@ jobs:
           name: Configure test information
           command: |
             aws s3 cp s3://android-circleci-payload/testconfiguration.json aws-android-sdk-testutils/src/main/res/raw/testconfiguration.json
+            aws s3 cp s3://android-circleci-payload/awsconfiguration.json  aws-android-sdk-mobile-client/src/androidTest/res/raw/awsconfiguration.json           
       - run:
           name: run integration tests
           command: |
             aws s3 cp s3://android-circleci-payload/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.jar
-            echo "${ANDROID_TESTS_CREDENTIALS_JSON}"  | base64 -di   > awsconfiguration.json
-            python3 CircleciScripts/run_integrationtest.py "~/test_results" "$(pwd)" "$(pwd)/awsconfiguration.json" "<< parameters.testmodule >>"
+            python3 CircleciScripts/run_integrationtest.py "~/test_results" "$(pwd)"  "<< parameters.testmodule >>"
       - run:
           name : check integration test result 
           command : |
@@ -524,6 +539,7 @@ jobs:
     steps:
       - checkout
       - configure_aws     
+      - setup_android_platform23
       - run:
           name: checkout sample applications
           command: |
@@ -629,6 +645,13 @@ jobs:
     steps:
       - checkout
       - set_enviroment_variables
+      - run:
+          name: checkout_developbranch
+          command: |
+            currentbranch=$(git branch | grep \* | cut -d ' ' -f2)
+            echo "$currentbranch"
+            echo "$newsdkversion"
+
       - run: 
           name: install python3-pip
           command: |
@@ -646,16 +669,16 @@ jobs:
           command : |
             git fetch
             git checkout develop
+            git checkout bumpversion CircleciScripts
+            git checkout CHANGELOG.md 
       - run:
           name: bump version
           command: |
-            python3 CircleciScripts/bump_version.py "$(pwd)" $newsdkversion 1.0.0
+            python3 CircleciScripts/bump_sdk_version.py "$(pwd)" $newsdkversion 1.0.0
       - run:
           name: check in the change 
           command: |
-
             gitstatus=$(git status)
-
             if [[ $gitstatus == *"Changes not staged for commit:"* ]]; then
               git config --local user.name "${GITHUB_USER}"
               git add .
@@ -663,21 +686,55 @@ jobs:
               git push  -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
             else
               echo "No changes"
-            fi         
+            fi   
+  merge_to_master:
+    docker:
+      - image: circleci/android:api-27-alpha
+    environment:
+      JVM_OPTS: -Xmx1024m
+    steps:
+      - checkout
+      - set_enviroment_variables
+      - run:
+          name: merge change to master
+          command: |
+            git checkout master
+            commitlog=$(git log)
+            commitlog=$(git log)
+            currentcommit="${CIRCLE_SHA1}"
+            if [[ "$commitlog" =~ .*"commit $currentcommit".* ]] 
+            then
+               echo "The change is alread merged"
+               circleci step halt
+            else
+               git checkout master
+               git merge develop
+               git push
+            fi
 workflows:
   version: 2
+  bump_sdk_version:
+    jobs:
+      - bump_sdk_version:
+          filters:
+            branches:
+              only: bumpversion          
   build_test:
     jobs:
-      - bump_sdk_version
-      - build
-      - unittest
+      - build:
+          filters:
+            branches:
+              ignore: bumpversion     
+      - unittest:
+           filters:
+            branches:
+              ignore: bumpversion     
       - pre_integrationtest: 
            filters:
             branches:
               only:
                 - master
                 - develop 
-                - runintegrationtest
       - integrationtest:
           name: apigateway
           testmodule: aws-android-sdk-apigateway-test
@@ -728,7 +785,6 @@ workflows:
               only:
                 - master
                 - develop
-                - runintegrationtest
       - integrationtest:
           name: ddb
           testmodule: aws-android-sdk-ddb-test
@@ -769,7 +825,6 @@ workflows:
               only:
                 - master
                 - develop
-                - runintegrationtest
       - integrationtest:
           name: lambda
           testmodule: aws-android-sdk-lambda-test
@@ -811,7 +866,6 @@ workflows:
               only:
                 - master
                 - develop
-                - runintegrationtest
       - integrationtest:
           name: sdb
           testmodule: aws-android-sdk-sdb-test
@@ -883,17 +937,26 @@ workflows:
               only:
                 - master
                 - develop 
-                - runintegrationtest
-      - integrationtest:
-          name: kinesisvideo
-          testmodule: aws-android-sdk-kinesisvideo
-          requires:
-            - pre_integrationtest    
-          filters:
-            branches:
-              only:
-                - master
-                - develop   
+      # - integrationtest:
+      #     name: kinesisvideo
+      #     testmodule: aws-android-sdk-kinesisvideo
+      #     requires:
+      #       - pre_integrationtest    
+      #     filters:
+      #       branches:
+      #         only:
+      #           - master
+      #           - develop   
+      # - integrationtest:
+      #     name: machinelearning
+      #     testmodule: aws-android-sdk-machinelearning
+      #     requires:
+      #       - pre_integrationtest    
+      #     filters:
+      #       branches:
+      #         only:
+      #           - master
+      #           - develop         
       - integrationtest:
           name: kinesisvideo-archivedmedia
           testmodule: aws-android-sdk-kinesisvideo-archivedmedia
@@ -937,6 +1000,11 @@ workflows:
               only:
                 - master
                 - develop
+      - merge_to_master:
+          filters:
+            branches:
+              only:
+                - develop        
  
   release_sdk:
     jobs:
@@ -1159,16 +1227,26 @@ workflows:
               ignore: /.*/
             tags:
               only: /^(release|beta)_v[0-9]+.[0-9]+.[0-9]+$/
-      - integrationtest:
-          name: kinesisvideo
-          testmodule: aws-android-sdk-kinesisvideo
-          requires:
-            - pre_integrationtest    
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^(release|beta)_v[0-9]+.[0-9]+.[0-9]+$/   
+      # - integrationtest:
+      #     name: kinesisvideo
+      #     testmodule: aws-android-sdk-kinesisvideo
+      #     requires:
+      #       - pre_integrationtest    
+      #     filters:
+      #       branches:
+      #         ignore: /.*/
+      #       tags:
+      #         only: /^(release|beta)_v[0-9]+.[0-9]+.[0-9]+$/   
+      # - integrationtest:
+      #     name: machinelearning
+      #     testmodule: aws-android-sdk-machinelearning 
+      #     requires:
+      #       - pre_integrationtest    
+      #     filters:
+      #       branches:
+      #         ignore: /.*/
+      #       tags:
+      #         only: /^(release|beta)_v[0-9]+.[0-9]+.[0-9]+$/         
       - integrationtest:
           name: kinesisvideo-archivedmedia
           testmodule: aws-android-sdk-kinesisvideo-archivedmedia

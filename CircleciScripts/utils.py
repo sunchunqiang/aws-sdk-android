@@ -8,6 +8,7 @@ from enum import Enum
 from collections import namedtuple
 import re
 import platform
+import time 
 
 TestType  = namedtuple('TestType', ['value', 'testAction', 'displayString'])
 class TestTypes(Enum):
@@ -54,6 +55,7 @@ def getFailedTestcases(indexHtml):
     # root = tree.getroot() 
 
     failedtests = set()
+    print("failed test list")
     for failure in root.findall(".//td[@class='failures']"):  
         a = failure.find('a')
         if a is None:
@@ -63,10 +65,11 @@ def getFailedTestcases(indexHtml):
         if index > 0 :
             classname = failedhref[:index]
             methodname = failedhref[index+6:]
-            failedtest = classname + "/" + methodname
-            print(failedtest)
-            failedtests.add(failedtest)
-         
+            if methodname == "null" or methodname == "No tests found.":
+                continue
+            failedtest = classname + "#" + methodname
+            print("["+classname+"]", "["+methodname+"]")
+            failedtests.add(failedtest)        
     return failedtests     
 
 
@@ -82,17 +85,57 @@ def runtest(module, testtype, results, ignoreFailures = None):
         return 1
     if exit_code != 0 :    
         print("test failed for {0}".format(module))
-        ignorefailure = False 
-        if ignoreFailures is not None:
-            ignoreFailures = set(ignoreFailures)
+
+        if testtype == TestTypes.IntegrationTest:
+            retrytimes = 3 
             indexHtml = os.path.join(module , "build/reports/androidTests/connected/index.html")
-            failedtests = getFailedTestcases(indexHtml)
-            if failedtests and failedtests.issubset(ignoreFailures):
-                ignorefailure = True  
-            else :
-                print("Unable ignore failures: ", failedtests - ignoreFailures)
-        if not ignorefailure:
-            runcommand('echo "export testresult=1" >> $BASH_ENV')  
+            failedtests = getFailedTestcases(indexHtml)   
+            #if test failed but we cannot get the failed test list, we need to run the whole test
+            if not failedtests:
+                for retry in range(retrytimes): 
+                    time.sleep(10)
+                    print("retry running test for whole module for {0} times".format(retry + 1)) 
+                    exit_code = runcommand(testcommand)  
+                    if exit_code == 0 :
+                        break;
+                    failedtests = getFailedTestcases(indexHtml) 
+                    if failedtests:
+                        break;
+
+            if exit_code != 0:
+                if failedtests: 
+                    failedretrytests = set()
+                    for failedtest in failedtests:  
+                        time.sleep(10)
+                        single_exit_code = 1               
+                        for retry in range(retrytimes):        
+                            print("retry running failed test {0}  for {1} times".format(failedtest, retry + 1))      
+                            testcommand = "bash gradlew {0}:{1} -Pandroid.testInstrumentationRunnerArguments.class={2}".format(module, testtype.testAction, failedtest)
+                            single_exit_code = runcommand(testcommand)   
+                            if single_exit_code == 0 : 
+                                break
+                        if single_exit_code != 0 :
+                            print("retry cannot resolve failed test {0}".format(failedtest))
+                            failedretrytests.add(failedtest)
+
+                    if failedretrytests :   
+                        print("Failed tests that cannot be resolved by retry: ", failedretrytests)         
+                        if ignoreFailures is not None:
+                            ignoreFailures = set(ignoreFailures)
+                            if failedretrytests.issubset(ignoreFailures):
+                                print("All failed test cases can be ignored")
+                                exit_code = 0 
+                            else :
+                                print("Unable ignore failures: ", failedretrytests - ignoreFailures)  
+                    else:  
+                        print("All failed test cases can be resolved by retry")
+                        exit_code = 0 
+                else:
+                    print("exit_code is not 0, but cannot get failed test cases from index.html")
+
+    print("exit_code:", exit_code)
+    if exit_code != 0:
+        runcommand('echo "export testresult=1" >> $BASH_ENV')  
 
     return 0
 
