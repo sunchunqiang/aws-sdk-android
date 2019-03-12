@@ -701,10 +701,11 @@ jobs:
             git config --local user.name "${GITHUB_USER}"
             git checkout master
             echo "git reset"
+            git fetch
             git reset --hard
             echo "git pull"
             git pull --rebase
-            echo "get git log"
+            echo "get git log" 
             commitlog=$(git log)
             currentcommit="${CIRCLE_SHA1}"
             echo $currentcommit
@@ -714,7 +715,6 @@ jobs:
                echo "The change is alread merged"
                circleci step halt
             else
-               git checkout master
                echo "merge change from devlop to master"
                git merge develop
                echo "push change"
