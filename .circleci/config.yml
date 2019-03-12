@@ -702,15 +702,34 @@ jobs:
             commitlog=$(git log)
             commitlog=$(git log)
             currentcommit="${CIRCLE_SHA1}"
+            echo $currentcommit
             if [[ "$commitlog" =~ .*"commit $currentcommit".* ]] 
             then
                echo "The change is alread merged"
                circleci step halt
             else
                git checkout master
+               echo "merge change from devlop to master"
                git merge develop
+               echo "push change"
                git push
             fi
+  prepare_release_sdk:
+    docker:
+      - image: circleci/android:api-27-alpha
+    environment:
+      JVM_OPTS: -Xmx1024m
+    steps:
+      - checkout
+      - set_enviroment_variables
+      - run:
+          name: trigger release_sdk if curremt commit is a bump version
+          command: |
+            currentcommit="${CIRCLE_SHA1}"
+            echo $currentcommit
+            commitmessage=$(git log --pretty=oneline ${currentcommit} | grep ${currentcommit})
+
+                
 workflows:
   version: 2
   bump_sdk_version:
@@ -1005,6 +1024,7 @@ workflows:
             branches:
               only:
                 - develop        
+      - prepare_release_sdk
  
   release_sdk:
     jobs:
