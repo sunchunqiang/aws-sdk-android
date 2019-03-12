@@ -1,5 +1,11 @@
 # Change Log - AWS SDK for Android
-## [Release [next_release_version]](https://github.com/aws/aws-sdk-android/releases/tag/release_v[releasing_version])
+
+## [Release 2.12.4](https://github.com/aws/aws-sdk-android/releases/tag/release_v2.12.4)
+
+* **AWS Core**
+  * Fixed a crash in initializing `CognitoCachingCredentialsProvider` while migrating the data stored under `expirationDate`.
+
+## [Release 2.12.3](https://github.com/aws/aws-sdk-android/releases/tag/release_v2.12.3)
 
 ### Enhancements
 
