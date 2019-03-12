@@ -698,11 +698,14 @@ jobs:
       - run:
           name: merge change to master
           command: |
+            git config --local user.name "${GITHUB_USER}"
             git checkout master
-            commitlog=$(git log)
+            git reset --hard
+            git pull --rebase
             commitlog=$(git log)
             currentcommit="${CIRCLE_SHA1}"
             echo $currentcommit
+            echo $commitlog
             if [[ "$commitlog" =~ .*"commit $currentcommit".* ]] 
             then
                echo "The change is alread merged"
@@ -728,6 +731,7 @@ jobs:
             currentcommit="${CIRCLE_SHA1}"
             echo $currentcommit
             commitmessage=$(git log --pretty=oneline ${currentcommit} | grep ${currentcommit})
+            echo $commitmessage
 
                 
 workflows:
