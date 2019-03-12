@@ -700,8 +700,11 @@ jobs:
           command: |
             git config --local user.name "${GITHUB_USER}"
             git checkout master
+            echo "git reset"
             git reset --hard
+            echo "git pull"
             git pull --rebase
+            echo "get git log"
             commitlog=$(git log)
             currentcommit="${CIRCLE_SHA1}"
             echo $currentcommit
@@ -715,7 +718,7 @@ jobs:
                echo "merge change from devlop to master"
                git merge develop
                echo "push change"
-               git push
+               git push -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
             fi
   prepare_release_sdk:
     docker:
