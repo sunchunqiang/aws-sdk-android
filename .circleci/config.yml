@@ -701,24 +701,23 @@ jobs:
             git config --local user.name "${GITHUB_USER}"
             git checkout master
             echo "git reset"
+            git fetch
             git reset --hard
             echo "git pull"
             git pull --rebase
-            echo "get git log"
+            echo "get git log" 
             commitlog=$(git log)
             currentcommit="${CIRCLE_SHA1}"
             echo $currentcommit
-            echo $commitlog
             if [[ "$commitlog" =~ .*"commit $currentcommit".* ]] 
             then
                echo "The change is alread merged"
                circleci step halt
             else
-               git checkout master
-               echo "merge change from devlop to master"
-               git merge develop
-               echo "push change"
-               git push -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
+              echo "merge change from devlop to master"
+              git merge  develop --no-edit --commit 
+              echo "push change"
+              git push -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
             fi
   prepare_release_sdk:
     docker:
