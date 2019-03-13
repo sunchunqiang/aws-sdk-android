@@ -759,6 +759,7 @@ jobs:
             echo $currentcommit
             commitmessage=$(git log --pretty=oneline ${currentcommit} | grep ${currentcommit})
             echo "commitmessage=$commitmessage"
+            echo "$commitmessage" | grep  "\[bump version [0-9]*.[0-9]*.[0-9]*\]" | sed 's/\[bump version \([0-9]*.[0-9]*.[0-9]*\)\]/\1/'
             release_version=$(echo "$commitmessage" | grep  "\[bump version [0-9]*.[0-9]*.[0-9]*\]" | sed 's/\[bump version \([0-9]*.[0-9]*.[0-9]*\)\]/\1/')
             echo "rellease_version=$release_version"
             if [ -z "$release_version" ]
