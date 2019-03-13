@@ -760,7 +760,7 @@ jobs:
             echo $commitmessage
             commitmessage="[bump version $newsdkversion]"
             release_version=$(echo "$commitmessage" | grep -E  "\[bump version [0-9]*.[0-9]*.[0-9]*\]" | sed 's/\[bump version \([0-9]*.[0-9]*.[0-9]*\)\]/\1/')
-            if [-z "$release_version"]
+            if [ -z "$release_version" ]
             then 
               echo "this is not a bump version commit"
             else
@@ -1073,7 +1073,6 @@ workflows:
       - prepare_release_sdk:
           requires:
             - build       
-            - uitest
             - unittest
             - post_integrationtest
           filters:
