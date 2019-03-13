@@ -503,6 +503,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx3200m
     steps:
+      - run: circleci step halt
       - skip_test_job_if_required
       - checkout
       - skip_job_if_triggered_by_circleci      
@@ -1064,7 +1065,6 @@ workflows:
           requires:
             - build       
             - uitest
-            - unittest
             - post_integrationtest
           filters:
             branches:
