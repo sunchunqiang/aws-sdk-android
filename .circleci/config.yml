@@ -1073,7 +1073,7 @@ workflows:
               only:
                 - develop        
       - prepare_release_sdk:
-           requires:
+          requires:
             - build       
             - unittest
             - post_integrationtest
