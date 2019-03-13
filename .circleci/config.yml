@@ -715,7 +715,7 @@ jobs:
                circleci step halt
             else
               echo "merge change from devlop to master"
-              git merge  develop --no-edit --commit 
+              git merge  develop --no-edit --commit   
               echo "push change"
               git push -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
             fi
