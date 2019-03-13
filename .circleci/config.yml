@@ -165,7 +165,33 @@ commands:
             # This is required becaused AWSCore has a compileOnly
             # dependency on API Level 23.
             sudo yes | sdkmanager "platforms;android-23"
+  skip_job_if_triggered_by_circleci:
+    description: >-
+      setup android platform 23
+    steps:
+      - run:
+          name: download android platform 23
+          command: |
+            currentcommit="${CIRCLE_SHA1}"
+            commitmessage=$(git log --pretty=oneline ${currentcommit} | grep ${currentcommit})
+            echo $commitmessage
+            if [[ "$commitlog" =~ .*"Trigger release from circleci".* ]] 
+            then
+               echo "The release is triggered by circleci. skip the job"
+               circleci step halt
+            fi
 
+  skip_test_job_if_required:
+    description: >-
+      setup android platform 23
+    steps:
+      - run:
+          name: checkiftestcanskip 
+          command: |
+              if [ "${SKIP_INTEGRATIONTEST}" == "TRUE" ]; then
+                echo "project enviroment variabe SKIP_INTEGRATIONTEST is set with TRUE, skip all integration tests"
+                circleci step halt
+              fi     
 jobs:
   build:
     working_directory: ~/code
@@ -174,6 +200,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx3200m
     steps:
+      - run: circleci step halt
       - checkout
       - generate_gradle_wrapper
       - setup_android_platform23
@@ -198,6 +225,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx1024m
     steps:
+      - run: circleci step halt
       - checkout
       - generate_gradle_wrapper
       - setup_android_platform23
@@ -477,15 +505,10 @@ jobs:
     environment:
       JVM_OPTS: -Xmx3200m
     steps:
-      - run:
-          name: checkiftestcanskip 
-          command: |
-              if [ "${SKIP_INTEGRATIONTEST}" == "TRUE" ]; then
-                echo "project enviroment variabe SKIP_INTEGRATIONTEST is set with TRUE, skip all integration tests"
-                circleci step halt
-              fi     
-              circleci step halt     
+      - run: circleci step halt
+      - skip_test_job_if_required
       - checkout
+      - skip_job_if_triggered_by_circleci      
       - configure_aws
       - setup_android_platform23
       - run: 
@@ -537,7 +560,10 @@ jobs:
     environment:
       JVM_OPTS: -Xmx3200m
     steps:
+      - run: circleci step halt
+      - skip_test_job_if_required      
       - checkout
+      - skip_job_if_triggered_by_circleci      
       - configure_aws     
       - setup_android_platform23
       - run:
@@ -648,6 +674,8 @@ jobs:
       - run:
           name: checkout_developbranch
           command: |
+            git fetch
+            git checkout develop         
             currentbranch=$(git branch | grep \* | cut -d ' ' -f2)
             echo "$currentbranch"
             echo "$newsdkversion"
@@ -665,13 +693,6 @@ jobs:
           name: Install lxml
           command: sudo pip3 install lxml    
       - run:
-          name: checkout_developbranch
-          command : |
-            git fetch
-            git checkout develop
-            git checkout bumpversion CircleciScripts
-            git checkout CHANGELOG.md 
-      - run:
           name: bump version
           command: |
             python3 CircleciScripts/bump_sdk_version.py "$(pwd)" $newsdkversion 1.0.0
@@ -686,6 +707,7 @@ jobs:
               git push  -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
             else
               echo "No changes"
+              exit 1
             fi   
   merge_to_master:
     docker:
@@ -709,17 +731,17 @@ jobs:
             commitlog=$(git log)
             currentcommit="${CIRCLE_SHA1}"
             echo $currentcommit
-            echo $commitlog
             if [[ "$commitlog" =~ .*"commit $currentcommit".* ]] 
             then
                echo "The change is alread merged"
-               circleci step halt
             else
-               echo "merge change from devlop to master"
-               git merge develop
-               echo "push change"
-               git push -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
+              echo "merge change from devlop to master"
+              git merge  develop --no-edit --commit   
+              echo "push change"
+              git push -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
             fi
+
+
   prepare_release_sdk:
     docker:
       - image: circleci/android:api-27-alpha
@@ -731,12 +753,25 @@ jobs:
       - run:
           name: trigger release_sdk if curremt commit is a bump version
           command: |
+            git config --local user.name "${GITHUB_USER}"
             currentcommit="${CIRCLE_SHA1}"
             echo $currentcommit
             commitmessage=$(git log --pretty=oneline ${currentcommit} | grep ${currentcommit})
-            echo $commitmessage
+            echo "commitmessage=$commitmessage"
+            release_version=$(echo "$commitmessage" | grep -E  "\[bump version [0-9]*.[0-9]*.[0-9]*\]" | sed 's/\[bump version \([0-9]*.[0-9]*.[0-9]*\)\]/\1/')
+            echo "rellease_version=$release_version"
+            if [ -z "$release_version" ]
+            then 
+              echo "this is not a bump version commit"
+            else
+              echo "tag branch, start release"
+              git tag -a "release_v$release_version"  -m "Release AWS SDK for Android $release_version. Trigger release from circleci"
+              git push --tags -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
+            fi
 
-                
+
+
+
 workflows:
   version: 2
   bump_sdk_version:
@@ -1027,12 +1062,23 @@ workflows:
                 - master
                 - develop
       - merge_to_master:
+          requires:
+            - build       
+            - unittest
+            - post_integrationtest
           filters:
             branches:
               only:
                 - develop        
-      - prepare_release_sdk
- 
+      - prepare_release_sdk:
+          requires:
+            - build       
+            - unittest
+            - post_integrationtest
+          filters:
+            branches:
+              only:
+                - master  
   release_sdk:
     jobs:
       - build:
