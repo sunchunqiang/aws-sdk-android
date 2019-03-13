@@ -730,7 +730,8 @@ jobs:
             echo "get git log" 
             commitlog=$(git log)
             currentcommit="${CIRCLE_SHA1}"
-            echo $currentcommit
+            echo "currentcommit=$currentcommit"
+            echo "$commitlog"
             if [[ "$commitlog" =~ .*"commit $currentcommit".* ]] 
             then
                echo "The change is alread merged"
