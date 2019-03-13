@@ -1072,7 +1072,15 @@ workflows:
             branches:
               only:
                 - develop        
-      - prepare_release_sdk 
+      - prepare_release_sdk:
+           requires:
+            - build       
+            - unittest
+            - post_integrationtest
+          filters:
+            branches:
+              only:
+                - master         
   release_sdk:
     jobs:
       - build:
