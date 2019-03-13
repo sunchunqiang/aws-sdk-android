@@ -200,6 +200,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx3200m
     steps:
+      - run: circleci step halt
       - checkout
       - generate_gradle_wrapper
       - setup_android_platform23
@@ -224,6 +225,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx1024m
     steps:
+      - run: circleci step halt
       - checkout
       - generate_gradle_wrapper
       - setup_android_platform23
@@ -558,6 +560,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx3200m
     steps:
+      - run: circleci step halt
       - skip_test_job_if_required      
       - checkout
       - skip_job_if_triggered_by_circleci      
@@ -671,6 +674,8 @@ jobs:
       - run:
           name: checkout_developbranch
           command: |
+            git fetch
+            git checkout develop         
             currentbranch=$(git branch | grep \* | cut -d ' ' -f2)
             echo "$currentbranch"
             echo "$newsdkversion"
@@ -688,13 +693,6 @@ jobs:
           name: Install lxml
           command: sudo pip3 install lxml    
       - run:
-          name: checkout_developbranch
-          command : |
-            git fetch
-            git checkout develop
-            git checkout bumpversion CircleciScripts
-            git checkout CHANGELOG.md 
-      - run:
           name: bump version
           command: |
             python3 CircleciScripts/bump_sdk_version.py "$(pwd)" $newsdkversion 1.0.0
@@ -709,6 +707,7 @@ jobs:
               git push  -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
             else
               echo "No changes"
+              exit 1
             fi   
   merge_to_master:
     docker:
@@ -758,13 +757,14 @@ jobs:
             currentcommit="${CIRCLE_SHA1}"
             echo $currentcommit
             commitmessage=$(git log --pretty=oneline ${currentcommit} | grep ${currentcommit})
-            echo $commitmessage
-            commitmessage="[bump version $newsdkversion]"
+            echo "commitmessage=$commitmessage"
             release_version=$(echo "$commitmessage" | grep -E  "\[bump version [0-9]*.[0-9]*.[0-9]*\]" | sed 's/\[bump version \([0-9]*.[0-9]*.[0-9]*\)\]/\1/')
+            echo "rellease_version=$release_version"
             if [ -z "$release_version" ]
             then 
               echo "this is not a bump version commit"
             else
+              echo "tag branch, start release"
               git tag -a "release_v$release_version"  -m "Release AWS SDK for Android $release_version. Trigger release from circleci"
               git push --tags -q https://${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
             fi
