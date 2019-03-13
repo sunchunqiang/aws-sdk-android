@@ -1064,7 +1064,7 @@ workflows:
       - merge_to_master:
           requires:
             - build       
-            - uitest
+            - unittest
             - post_integrationtest
           filters:
             branches:
