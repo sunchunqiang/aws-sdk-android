@@ -784,7 +784,6 @@ jobs:
           command: |
             git config --local user.name "${GITHUB_USER}"
             git checkout master
-            git reset --hard
             git pull --rebase
             commitlog=$(git log)
             currentcommit="${CIRCLE_SHA1}"
