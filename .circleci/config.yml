@@ -57,8 +57,6 @@ commands:
             sdkName=aws-android-sdk
             echo "export sdkName=$sdkName" >> $BASH_ENV
 
-            # echo "export newsdkversion=2.7.7" >> $BASH_ENV
-
             release_bucket=${RELEASE_BUCKET}
             echo "export release_bucket=$release_bucket" >> $BASH_ENV
 
@@ -167,7 +165,7 @@ commands:
             sudo yes | sdkmanager "platforms;android-23"
   skip_job_if_triggered_by_circleci:
     description: >-
-      setup android platform 23
+      skip the job is release_sdk is triggered by circleci
     steps:
       - run:
           name: download android platform 23
@@ -181,17 +179,36 @@ commands:
                circleci step halt
             fi
 
-  skip_test_job_if_required:
+  override_test:
     description: >-
-      setup android platform 23
+      skip the test job is project variabe OVERRIDE_TEST is set with TRUE
     steps:
       - run:
-          name: checkiftestcanskip 
+          name: checkiftestcanoverrided 
           command: |
-              if [ "${SKIP_INTEGRATIONTEST}" == "TRUE" ]; then
-                echo "project enviroment variabe SKIP_INTEGRATIONTEST is set with TRUE, skip all integration tests"
+              if [ "${OVERRIDE_TEST}" == "TRUE" ]; then
+                echo "project enviroment variabe OVERRIDE_TEST is set with TRUE, skip all integration tests"
                 circleci step halt
-              fi     
+              fi    
+  skip_job_if_required:
+    description: >-
+      skip the test job for ciecleci script test
+    steps:
+      - run:
+          name: checkifjobcanskip 
+          command: |
+              echo ""
+              # we can add script here to halt a job for circleci script test
+              declare -a jobs=("prepare_release_sdk", "merge_to_master", "bump_sdk_version")
+              for i in "${jobs[@]}"
+              do
+                if [ "$i" == "${CIRCLE_JOB}" ]
+                then 
+                  echo "not skip job $i"
+                  exit 0
+                fi
+              done
+              circleci step halt
 jobs:
   build:
     working_directory: ~/code
@@ -200,7 +217,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx3200m
     steps:
-      - run: circleci step halt
+      - skip_job_if_required
       - checkout
       - generate_gradle_wrapper
       - setup_android_platform23
@@ -225,7 +242,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx1024m
     steps:
-      - run: circleci step halt
+      - skip_job_if_required
       - checkout
       - generate_gradle_wrapper
       - setup_android_platform23
@@ -252,6 +269,7 @@ jobs:
     docker:
       - image:  circleci/golang:1.11
     steps:
+      - skip_job_if_required
       - checkout
       - set_enviroment_variables
       - run:
@@ -270,6 +288,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx3200m
     steps:
+      - skip_job_if_required
       - checkout
       - set_enviroment_variables
       - run:
@@ -346,6 +365,7 @@ jobs:
     macos:
       xcode: "10.1.0"  # Xcode version number does not matter here, we just need a MacOS image
     steps:
+      - skip_job_if_required
       - checkout
       - configure_aws
       - set_enviroment_variables
@@ -410,6 +430,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx1024m
     steps:
+      - skip_job_if_required
       - checkout
       - configure_aws
       - set_enviroment_variables
@@ -475,27 +496,24 @@ jobs:
     environment:
       JVM_OPTS: -Xmx1024m
     steps:
+      - skip_job_if_required
       - run:
-          name: check environment variabe 
+          name: reset OVERRIDE_TEST environment variabe 
           command: |
-              if [ "${SKIP_INTEGRATIONTEST}" == "TRUE" ]; then
-                echo "project enviroment variabe SKIP_INTEGRATIONTEST should not be TRUE at the moment, this will skip all integration tests"
-                exit 1
-              fi           
-              if [ -z "$CIRCLE_TAG" ]
-              then 
-                echo "this is not tag commit"
-              else
-                echo "this is a tag commit"
-                exit 1
-              fi 
-
+            setvarialbe_endpoint="https://circleci.com/api/v1.1/project/github/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/envvar?circle-token=${CIRCLE_API_USER_TOKEN}"
+            parameters='{"name":"OVERRIDE_TEST","value":"FALSE"}'
+            curl -X POST \
+              -H "Content-type: application/json" \
+              -H "Accept: application/json" \
+              -d "$parameters" \
+              "https://circleci.com/api/v1.1/project/github/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/envvar?circle-token=${CIRCLE_API_USER_TOKEN}"
   post_integrationtest:
     docker:
       - image: circleci/android:api-27-alpha
     environment:
       JVM_OPTS: -Xmx1024m
     steps:
+      - skip_job_if_required
       - run:
           name: prepare
           command: echo "post_integrationtest"          
@@ -512,8 +530,8 @@ jobs:
     environment:
       JVM_OPTS: -Xmx3200m
     steps:
-      - run: circleci step halt
-      - skip_test_job_if_required
+      - skip_job_if_required
+      - override_test
       - checkout
       - skip_job_if_triggered_by_circleci      
       - configure_aws
@@ -567,8 +585,8 @@ jobs:
     environment:
       JVM_OPTS: -Xmx3200m
     steps:
-      - run: circleci step halt
-      - skip_test_job_if_required      
+      - skip_job_if_required
+      - override_test      
       - checkout
       - skip_job_if_triggered_by_circleci      
       - configure_aws     
@@ -614,6 +632,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx3200m
     steps:
+      - skip_job_if_required
       - set_enviroment_variables
       - quit_for_nominorversion
       - checkout  
@@ -646,6 +665,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx3200m
     steps:
+      - skip_job_if_required
       - set_enviroment_variables
       - quit_for_nominorversion
       - checkout  
@@ -676,6 +696,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx1024m
     steps:
+      - skip_job_if_required
       - checkout
       - set_enviroment_variables
       - run:
@@ -722,6 +743,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx1024m
     steps:
+      - skip_job_if_required
       - checkout
       - set_enviroment_variables
       - run:
@@ -759,6 +781,7 @@ jobs:
     environment:
       JVM_OPTS: -Xmx1024m
     steps:
+      - skip_job_if_required
       - checkout
       - set_enviroment_variables
       - run:
@@ -788,17 +811,17 @@ workflows:
       - bump_sdk_version:
           filters:
             branches:
-              only: bumpversion          
+              only: bump_sdk_version          
   build_test:
     jobs:
       - build:
           filters:
             branches:
-              ignore: bumpversion     
+              ignore: bump_sdk_version     
       - unittest:
            filters:
             branches:
-              ignore: bumpversion     
+              ignore: bump_sdk_version     
       - pre_integrationtest: 
            filters:
             branches:
