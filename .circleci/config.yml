@@ -199,17 +199,17 @@ commands:
           command: |
               echo ""
               # we can add script here to halt a job for circleci script test
-              # declare -a jobs=("prepare_release_sdk" "merge_to_master" "bump_sdk_version")
-              # for i in "${jobs[@]}"
-              # do
-              #   echo "$i":"${CIRCLE_JOB}"
-              #   if [ "$i" == "${CIRCLE_JOB}" ]
-              #   then 
-              #     echo "not skip job $i"
-              #     exit 0
-              #   fi
-              # done
-              # circleci step halt
+              declare -a jobs=("prepare_release_sdk" "merge_to_master" "bump_sdk_version")
+              for i in "${jobs[@]}"
+              do
+                echo "$i":"${CIRCLE_JOB}"
+                if [ "$i" == "${CIRCLE_JOB}" ]
+                then 
+                  echo "not skip job $i"
+                  exit 0
+                fi
+              done
+              circleci step halt
 jobs:
   build:
     working_directory: ~/code
@@ -783,8 +783,7 @@ jobs:
           name: merge change to master
           command: |
             git config --local user.name "${GITHUB_USER}"
-            git fetch
-            git checkout origin/master
+            git checkout master
             git reset --hard
             git pull --rebase
             commitlog=$(git log)
