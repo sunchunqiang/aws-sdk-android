@@ -104,6 +104,11 @@ commands:
       - run:
           name: checkout repository for bump version
           command: |
+            if [ -z "$target_branch" ]
+            then 
+              target_branch="master"
+            fi
+
             git config --local user.name "${GITHUB_BUMPVERSION_USER}"
             git clone "https://github.com/${GITHUB_BUMPVERSION_USER}/${bumpversion_repo_name}.git"
             cd ${bumpversion_repo_name}
@@ -119,7 +124,7 @@ commands:
             git remote add upstream https://github.com/${bumpversion_repo_user}/${bumpversion_repo_name}
             git remote -v
             git fetch upstream
-            git reset --hard upstream/master  
+            git reset --hard upstream/$target_branch  
             echo "push update the branch"
             git push  --force   -q https://${GITHUB_BUMPVERSION_TOKEN}@github.com/${GITHUB_BUMPVERSION_USER}/${bumpversion_repo_name}.git
 
@@ -143,6 +148,10 @@ commands:
       - run:
           name: check in changes
           command: |
+            if [ -z "$target_branch" ]
+            then 
+              target_branch="master"
+            fi          
             cd ${bumpversion_repo_name}
             git status
             git config --local user.name "${GITHUB_BUMPVERSION_USER}"
@@ -152,7 +161,7 @@ commands:
             content="${bump_version_message}" 
             echo "title:$title"
             echo "content:$content"
-            python3 ../CircleciScripts/create_pullrequest.py  "${GITHUB_BUMPVERSION_USER}" "${GITHUB_BUMPVERSION_TOKEN}" "$title" "$content" "master" "${GITHUB_BUMPVERSION_USER}:bump_version" ${bumpversion_repo_user} ${bumpversion_repo_name}
+            python3 ../CircleciScripts/create_pullrequest.py  "${GITHUB_BUMPVERSION_USER}" "${GITHUB_BUMPVERSION_TOKEN}" "$title" "$content" "$target_branch" "${GITHUB_BUMPVERSION_USER}:bump_version" ${bumpversion_repo_user} ${bumpversion_repo_name}
   setup_android_platform23:
     description: >-
       setup android platform 23
@@ -730,8 +739,38 @@ jobs:
       JVM_OPTS: -Xmx1024m
     steps:
       - skip_job_if_required
-      - checkout
       - set_enviroment_variables
+      - checkout  
+
+      - run:
+          name: set_bumpversion_enviroment
+          command: |
+            bumpversion_repo_user=aws-amplify
+            bumpversion_repo_name=aws-sdk-android
+            release_version=$(cat version)
+            release_version=$(echo "$release_version" | xargs echo -n)
+            echo "release_version=[$release_version]"
+            bump_version_message="bump android sdk version to ${release_version}"
+            bump_version_pr_title="bump android sdk version to ${release_version}"
+            echo "export bumpversion_repo_user=$bumpversion_repo_user" >> $BASH_ENV
+            echo "export bumpversion_repo_name=$bumpversion_repo_name" >> $BASH_ENV
+            echo "export release_version=$release_version" >> $BASH_ENV
+            echo "export bump_version_message='${bump_version_message}'" >> $BASH_ENV
+            echo "export bump_version_pr_title='${bump_version_pr_title}'" >> $BASH_ENV
+            echo "bump_version_pr_title:$bump_version_pr_title"
+
+      - bump_version_pre
+      - run:
+          name: bump version
+          command: |
+            python3 CircleciScripts/bump_sdk_version.py "$(pwd)/${bumpversion_repo_name}" $release_version 1.0.0
+      - bump_version_post
+
+
+
+
+
+
       - run:
           name: checkout_developbranch
           command: |
