@@ -780,7 +780,7 @@ jobs:
             bumpversion_repo_user=aws-amplify
             bumpversion_repo_name=aws-sdk-android
             bump_version_message="[bump version $release_version]"
-            bump_version_pr_title="bump android sdk version to ${release_version}"
+            bump_version_pr_title="[bump version $release_version]"
             target_branch=develop
             echo "export bumpversion_repo_user=$bumpversion_repo_user" >> $BASH_ENV
             echo "export bumpversion_repo_name=$bumpversion_repo_name" >> $BASH_ENV
