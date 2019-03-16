@@ -9,14 +9,14 @@
     <parent>
         <groupId>com.amazonaws</groupId>
         <artifactId>aws-android-sdk-pom</artifactId>
-        <version>3.7.4</version>
+        <version>3.7.6</version>
     </parent>
     <dependencies>
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-android-sdk-core</artifactId>
             <optional>false</optional>
-            <version>3.7.4</version>
+            <version>3.7.6</version>
         </dependency>
     </dependencies>
     <build>
