@@ -213,7 +213,7 @@ commands:
               fi    
   skip_job_if_required:
     description: >-
-      skip the test job for ciecleci script test
+      skip job unless required
     steps:
       - run:
           name: checkifjobcanskip 
