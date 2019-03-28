@@ -4,6 +4,8 @@ import demjson
 import time 
 import sys
 import os
+import datetime
+
 packagelist = {
     'aws-android-sdk-rekognition', 
     'aws-android-sdk-cloudwatch', 
@@ -78,9 +80,13 @@ def IsAllPackageAvailableOnMaven(version):
         return True
 
 version = sys.argv[1]
-
+starttime = datetime.datetime.now()
 while not IsAllPackageAvailableOnMaven(version):
     time.sleep(300)
+    # do we need this?
+    # if (datetime.datetime.now() - starttime).seconds / 60 > 240:
+    #     print("time out")
+    #     exit(1)
 
 print("Done!")
 
