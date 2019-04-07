@@ -225,6 +225,15 @@ commands:
       skip the test job is project variabe OVERRIDE_TEST is set with TRUE
     steps:
       - run:
+          name: skip test in master
+          command: |
+              notskipflag=$(echo "${NOT_SKIPTESTINMASTER}" |  tr '[:upper:]' '[:lower:]')
+              if [ "${notskipflag}" != "true" ]  &&  [ "${CIRCLE_BRANCH}" == "testbranch" ]
+              then 
+                echo "bypass test job in master"
+                circleci step halt
+              fi          
+      - run:
           name: checkiftestcanoverrided 
           command: |
               echo "override_test_varaible_name=$override_test_varaible_name"
@@ -235,6 +244,8 @@ commands:
                 echo "project enviroment variabe OVERRIDE_TEST is set with TRUE, skip all tests"
                 circleci step halt
               fi    
+
+
   skip_job_if_required:
     description: >-
       skip job unless required
@@ -593,6 +604,7 @@ jobs:
     steps:
       - skip_job_if_required
       - set_enviroment_variables
+      - override_test_job
       - run:
           name: get ovrride test variabe name 
           command: |
@@ -626,6 +638,7 @@ jobs:
       JVM_OPTS: -Xmx1024m
     steps:
       - skip_job_if_required
+      - override_test_job
       - run:
           name: prepare
           command: echo "post_integrationtest"          
@@ -1078,9 +1091,35 @@ jobs:
           command: |
             python3 CircleciScripts/get_testresult_on_devicefarm.py "$(pwd)/devicefarm_configure.json" "${LAST_RUN_COMMITID}"
 
+  testjob:
+    macos: 
+      xcode: "10.1.0"
+    steps:
+      - set_enviroment_variables
+      - override_test_job
+      - checkout  
+      - configure_aws
+      - run: 
+          name: test
+          command: |
+            aws s3 cp s3://android-circleci-payload/Certificates.p12 ./Certificates.p12
+      - run: |
+          echo "step 1"
+          security create-keychain -p keychain_password MyKeychain.keychain
+          echo "step 2"
+          security import ./Certificates.p12 -t agg -k MyKeychain.keychain -P "123456"   
+          echo "step 3" 
+          security list-keychains -s "./MyKeyhain.keychain"
+          echo "step 4"
+          security default-keychain -s "./MyKeychain.keychain"
+          echo "step 5"
+          security unlock-keychain -p "keychain_password" "./MyKeychain.keychain"              
 
 workflows:
   version: 2
+  test:
+    jobs:
+      - testjob
   check_sdk_on_maven:
     triggers:
       - schedule:
@@ -1128,15 +1167,21 @@ workflows:
       - build:
           filters:
             branches:
-              ignore: bump_sdk_version     
+              ignore: 
+                - bump_sdk_version     
+                - testbranch
       - build_api10:
           filters:
             branches:
-              ignore: bump_sdk_version                  
+              ignore: 
+                - bump_sdk_version    
+                - testbranch              
       - unittest:
           filters:
             branches:
-              ignore: bump_sdk_version
+              ignore: 
+                - bump_sdk_version
+                - testbranch
       - create_pullrequest_for_modelupdate:
           filters:
             branches:
